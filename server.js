@@ -1,6 +1,8 @@
 require("dotenv").config();
 
 const express = require("express");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./docs/swagger");
 const cors = require("cors");
 const { connectDB } = require("./src/config/db");
 const { initSchema } = require("./src/migrations/initSchema");
@@ -11,6 +13,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 5000;
@@ -21,6 +24,7 @@ const startServer = async () => {
 
   app.listen(PORT, () => {
     console.log(`Bookie Cookie backend running on port ${PORT}`);
+    console.log(`API docs: http://localhost:${PORT}/api-docs`);
   });
 };
 
