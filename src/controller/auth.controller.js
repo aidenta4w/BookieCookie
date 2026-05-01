@@ -1,36 +1,21 @@
-const authService = require("../services/auth.service");
+const authViewModel = require("../viewmodels/auth.viewmodel");
+const authView = require("../views/auth.view");
 
 const signup = async (req, res) => {
   try {
-    const user = await authService.signup(req.body);
-
-    res.status(201).json({
-      success: true,
-      message: "Sign up successfully",
-      data: user,
-    });
+    const user = await authViewModel.signup(req.body);
+    return authView.signupSuccess(res, user);
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    return authView.errorResponse(res, 400, error);
   }
 };
 
 const login = async (req, res) => {
   try {
-    const result = await authService.login(req.body);
-
-    res.status(200).json({
-      success: true,
-      message: "Login successfully",
-      data: result,
-    });
+    const result = await authViewModel.login(req.body);
+    return authView.loginSuccess(res, result);
   } catch (error) {
-    res.status(401).json({
-      success: false,
-      message: error.message,
-    });
+    return authView.errorResponse(res, 401, error);
   }
 };
 
