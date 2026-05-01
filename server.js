@@ -7,6 +7,7 @@ const cors = require("cors");
 const { connectDB } = require("./src/config/db");
 const { initSchema } = require("./src/migrations/initSchema");
 const authRoutes = require("./src/routes/auth.route");
+const homeRoutes = require("./src/routes/home.route");
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
+app.use("/api/home", homeRoutes);
 
 const PORT = process.env.PORT || 5000;
 

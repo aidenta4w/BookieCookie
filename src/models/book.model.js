@@ -4,4 +4,3 @@ module.exports = {
   TABLE_NAME,
 };
 
-test

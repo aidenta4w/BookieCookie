@@ -4,7 +4,7 @@ const findByEmail = async (email) => {
   const result = await pool.query(
     `SELECT id, name, email, password_hash, avatar_url, bio, created_at, updated_at
      FROM users
-     WHERE email = $1
+     WHERE LOWER(email) = LOWER($1)
      LIMIT 1`,
     [email]
   );
@@ -23,7 +23,7 @@ const createUser = async ({
     `INSERT INTO users (name, email, password_hash, avatar_url, bio)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING id, name, email, avatar_url, bio, created_at, updated_at`,
-    [name, email, passwordHash, avatarUrl, bio]
+    [name, email.toLowerCase(), passwordHash, avatarUrl, bio]
   );
 
   return result.rows[0];
