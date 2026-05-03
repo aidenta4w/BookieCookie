@@ -1,6 +1,7 @@
 const { pool } = require("../config/db");
 const bookModel = require("../models/book.model");
 const userBookModel = require("../models/userBook.model");
+const { uploadBufferToCloudinary } = require("../config/cloudinary");
 
 const createManualBook = async ({
   user_id,
@@ -13,7 +14,7 @@ const createManualBook = async ({
   current_page,
   start_date,
   finish_date,
-}) => {
+}, coverFile) => {
   const userId = Number(user_id);
   const normalizedTitle = `${title ?? ""}`.trim();
   const normalizedAuthor = `${author ?? ""}`.trim();
@@ -67,9 +68,20 @@ const createManualBook = async ({
   try {
     await client.query("BEGIN");
 
+    let coverImageUrl = null;
+
+    if (coverFile?.buffer) {
+      const uploadResult = await uploadBufferToCloudinary(coverFile.buffer, {
+        originalFilename: coverFile.originalname,
+        folder: "bookiecookie/manual-books",
+      });
+      coverImageUrl = uploadResult.secure_url;
+    }
+
     const book = await bookModel.createBook({
       title: normalizedTitle,
       author: normalizedAuthor || "Unknown author",
+      coverImageUrl,
       client,
     });
 

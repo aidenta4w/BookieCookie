@@ -41,7 +41,6 @@ const initSchema = async () => {
       rating INTEGER CHECK (rating BETWEEN 1 AND 5),
       note TEXT,
       reading_year INTEGER,
-      current_page INTEGER NOT NULL DEFAULT 0 CHECK (current_page >= 0),
       start_date DATE,
       finish_date DATE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -2,7 +2,7 @@ const userBookViewModel = require("../viewmodels/userBook.viewmodel");
 
 const createManualBook = async (req, res) => {
   try {
-    const data = await userBookViewModel.createManualBook(req.body);
+    const data = await userBookViewModel.createManualBook(req.body, req.file);
 
     return res.status(201).json({
       success: true,
