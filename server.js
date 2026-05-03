@@ -8,6 +8,7 @@ const { connectDB } = require("./src/config/db");
 const { initSchema } = require("./src/migrations/initSchema");
 const authRoutes = require("./src/routes/auth.route");
 const homeRoutes = require("./src/routes/home.route");
+const userBookRoutes = require("./src/routes/userBook.route");
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
+app.use("/api/user-books", userBookRoutes);
 
 const PORT = process.env.PORT || 5000;
 
