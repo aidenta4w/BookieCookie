@@ -11,7 +11,6 @@ const createManualBook = async ({
   rating,
   note,
   reading_year,
-  current_page,
   start_date,
   finish_date,
 }, coverFile) => {
@@ -28,10 +27,6 @@ const createManualBook = async ({
     reading_year === null || reading_year === undefined || reading_year === ""
       ? null
       : Number(reading_year);
-  const parsedCurrentPage =
-    current_page === null || current_page === undefined || current_page === ""
-      ? 0
-      : Number(current_page);
 
   if (!Number.isInteger(userId) || userId <= 0) {
     throw new Error("Invalid user id");
@@ -57,10 +52,6 @@ const createManualBook = async ({
     (!Number.isInteger(parsedReadingYear) || parsedReadingYear < 0)
   ) {
     throw new Error("Reading year must be a valid number");
-  }
-
-  if (!Number.isInteger(parsedCurrentPage) || parsedCurrentPage < 0) {
-    throw new Error("Current page must be a valid number");
   }
 
   const client = await pool.connect();
@@ -92,7 +83,6 @@ const createManualBook = async ({
       rating: parsedRating,
       note: normalizedNote || null,
       readingYear: parsedReadingYear,
-      currentPage: parsedCurrentPage,
       startDate: start_date || null,
       finishDate: finish_date || null,
       client,

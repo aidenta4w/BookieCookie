@@ -10,7 +10,6 @@ const createUserBook = async ({
   rating = null,
   note = null,
   readingYear = null,
-  currentPage = 0,
   startDate = null,
   finishDate = null,
   client = pool,
@@ -23,13 +22,12 @@ const createUserBook = async ({
       rating,
       note,
       reading_year,
-      current_page,
       start_date,
       finish_date
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id, user_id, book_id, status, rating, note, reading_year, current_page, start_date, finish_date, created_at, updated_at`,
-    [userId, bookId, status, rating, note, readingYear, currentPage, startDate, finishDate]
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id, user_id, book_id, status, rating, note, reading_year, start_date, finish_date, created_at, updated_at`,
+    [userId, bookId, status, rating, note, readingYear, startDate, finishDate]
   );
 
   return result.rows[0];

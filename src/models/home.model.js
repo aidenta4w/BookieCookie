@@ -8,7 +8,6 @@ const getCurrentReadingBooks = async (userId) => {
         b.title,
         b.author,
         b.cover_image_url,
-        ub.current_page,
         ub.start_date,
         ub.updated_at
      FROM user_books ub

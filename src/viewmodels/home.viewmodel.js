@@ -41,8 +41,6 @@ const getDashboard = async (userId) => {
       title: book.title,
       author: book.author,
       cover_image_url: book.cover_image_url,
-      current_page: book.current_page,
-      progress_percent: Math.max(0, Math.min(book.current_page, 100)),
       start_date: book.start_date,
       updated_at: book.updated_at,
     })),
