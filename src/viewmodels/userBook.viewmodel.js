@@ -3,7 +3,15 @@ const bookModel = require("../models/book.model");
 const userBookModel = require("../models/userBook.model");
 const { uploadBufferToCloudinary } = require("../config/cloudinary");
 
-const createManualBook = async ({
+const parseOptionalNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  return Number(value);
+};
+
+const normalizeManualBookPayload = ({
   user_id,
   title,
   author,
@@ -13,20 +21,14 @@ const createManualBook = async ({
   reading_year,
   start_date,
   finish_date,
-}, coverFile) => {
+}) => {
   const userId = Number(user_id);
   const normalizedTitle = `${title ?? ""}`.trim();
   const normalizedAuthor = `${author ?? ""}`.trim();
   const normalizedStatus = `${status ?? "plan_to_read"}`.trim() || "plan_to_read";
   const normalizedNote = `${note ?? ""}`.trim();
-  const parsedRating =
-    rating === null || rating === undefined || rating === ""
-      ? null
-      : Number(rating);
-  const parsedReadingYear =
-    reading_year === null || reading_year === undefined || reading_year === ""
-      ? null
-      : Number(reading_year);
+  const parsedRating = parseOptionalNumber(rating);
+  const parsedReadingYear = parseOptionalNumber(reading_year);
 
   if (!Number.isInteger(userId) || userId <= 0) {
     throw new Error("Invalid user id");
@@ -53,6 +55,52 @@ const createManualBook = async ({
   ) {
     throw new Error("Reading year must be a valid number");
   }
+
+  return {
+    userId,
+    normalizedTitle,
+    normalizedAuthor,
+    normalizedStatus,
+    normalizedNote,
+    parsedRating,
+    parsedReadingYear,
+    startDate: start_date || null,
+    finishDate: finish_date || null,
+  };
+};
+
+const createManualBook = async ({
+  user_id,
+  title,
+  author,
+  status,
+  rating,
+  note,
+  reading_year,
+  start_date,
+  finish_date,
+}, coverFile) => {
+  const {
+    userId,
+    normalizedTitle,
+    normalizedAuthor,
+    normalizedStatus,
+    normalizedNote,
+    parsedRating,
+    parsedReadingYear,
+    startDate,
+    finishDate,
+  } = normalizeManualBookPayload({
+    user_id,
+    title,
+    author,
+    status,
+    rating,
+    note,
+    reading_year,
+    start_date,
+    finish_date,
+  });
 
   const client = await pool.connect();
 
@@ -83,8 +131,8 @@ const createManualBook = async ({
       rating: parsedRating,
       note: normalizedNote || null,
       readingYear: parsedReadingYear,
-      startDate: start_date || null,
-      finishDate: finish_date || null,
+      startDate,
+      finishDate,
       client,
     });
 
@@ -112,7 +160,169 @@ const getUserLibrary = async (userIdParam) => {
   return userBookModel.getUserLibrary(userId);
 };
 
+const getUserBookDetail = async ({ userBookId, userId }) => {
+  const parsedUserBookId = Number(userBookId);
+  const parsedUserId = Number(userId);
+
+  if (!Number.isInteger(parsedUserBookId) || parsedUserBookId <= 0) {
+    throw new Error("Invalid user book id");
+  }
+
+  if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+    throw new Error("Invalid user id");
+  }
+
+  const detail = await userBookModel.getUserBookDetail({
+    userBookId: parsedUserBookId,
+    userId: parsedUserId,
+  });
+
+  if (!detail) {
+    throw new Error("Book detail not found");
+  }
+
+  return detail;
+};
+
+const updateManualBook = async (userBookIdParam, payload, coverFile) => {
+  const parsedUserBookId = Number(userBookIdParam);
+
+  if (!Number.isInteger(parsedUserBookId) || parsedUserBookId <= 0) {
+    throw new Error("Invalid user book id");
+  }
+
+  const {
+    userId,
+    normalizedTitle,
+    normalizedAuthor,
+    normalizedStatus,
+    normalizedNote,
+    parsedRating,
+    parsedReadingYear,
+    startDate,
+    finishDate,
+  } = normalizeManualBookPayload(payload);
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const existingDetail = await userBookModel.getUserBookDetail({
+      userBookId: parsedUserBookId,
+      userId,
+      client,
+    });
+
+    if (!existingDetail) {
+      throw new Error("Book detail not found");
+    }
+
+    let coverImageUrl = existingDetail.cover_image_url ?? null;
+
+    if (coverFile?.buffer) {
+      const uploadResult = await uploadBufferToCloudinary(coverFile.buffer, {
+        originalFilename: coverFile.originalname,
+        folder: "bookiecookie/manual-books",
+      });
+      coverImageUrl = uploadResult.secure_url;
+    }
+
+    await bookModel.updateBook({
+      bookId: existingDetail.book_id,
+      title: normalizedTitle,
+      author: normalizedAuthor || "Unknown author",
+      coverImageUrl,
+      client,
+    });
+
+    await userBookModel.updateUserBook({
+      userBookId: parsedUserBookId,
+      status: normalizedStatus,
+      rating: parsedRating,
+      note: normalizedNote || null,
+      readingYear: parsedReadingYear,
+      startDate,
+      finishDate,
+      client,
+    });
+
+    const updatedDetail = await userBookModel.getUserBookDetail({
+      userBookId: parsedUserBookId,
+      userId,
+      client,
+    });
+
+    await client.query("COMMIT");
+
+    return updatedDetail;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const startReadingBook = async (userBookIdParam, userIdParam) => {
+  const parsedUserBookId = Number(userBookIdParam);
+  const parsedUserId = Number(userIdParam);
+
+  if (!Number.isInteger(parsedUserBookId) || parsedUserBookId <= 0) {
+    throw new Error("Invalid user book id");
+  }
+
+  if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+    throw new Error("Invalid user id");
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const existingDetail = await userBookModel.getUserBookDetail({
+      userBookId: parsedUserBookId,
+      userId: parsedUserId,
+      client,
+    });
+
+    if (!existingDetail) {
+      throw new Error("Book detail not found");
+    }
+
+    await userBookModel.updateUserBook({
+      userBookId: parsedUserBookId,
+      status: "reading",
+      rating: existingDetail.rating,
+      note: existingDetail.note,
+      readingYear: existingDetail.reading_year,
+      startDate: existingDetail.start_date || new Date().toISOString().split("T")[0],
+      finishDate: existingDetail.finish_date,
+      client,
+    });
+
+    const updatedDetail = await userBookModel.getUserBookDetail({
+      userBookId: parsedUserBookId,
+      userId: parsedUserId,
+      client,
+    });
+
+    await client.query("COMMIT");
+
+    return updatedDetail;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   createManualBook,
   getUserLibrary,
+  getUserBookDetail,
+  updateManualBook,
+  startReadingBook,
 };

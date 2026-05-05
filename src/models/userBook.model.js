@@ -58,9 +58,68 @@ const getUserLibrary = async (userId, client = pool) => {
   return result.rows;
 };
 
+const getUserBookDetail = async ({ userBookId, userId, client = pool }) => {
+  const result = await client.query(
+    `SELECT
+        ub.id,
+        ub.user_id,
+        ub.book_id,
+        ub.status,
+        ub.rating,
+        ub.note,
+        ub.reading_year,
+        ub.start_date,
+        ub.finish_date,
+        ub.created_at,
+        ub.updated_at,
+        b.title,
+        b.author,
+        b.category,
+        b.isbn,
+        b.published_year,
+        b.description,
+        b.cover_image_url
+     FROM user_books ub
+     INNER JOIN books b ON b.id = ub.book_id
+     WHERE ub.id = $1 AND ub.user_id = $2
+     LIMIT 1`,
+    [userBookId, userId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const updateUserBook = async ({
+  userBookId,
+  status,
+  rating,
+  note,
+  readingYear,
+  startDate,
+  finishDate,
+  client = pool,
+}) => {
+  const result = await client.query(
+    `UPDATE user_books
+     SET status = $2,
+         rating = $3,
+         note = $4,
+         reading_year = $5,
+         start_date = $6,
+         finish_date = $7
+     WHERE id = $1
+     RETURNING id, user_id, book_id, status, rating, note, reading_year, start_date, finish_date, created_at, updated_at`,
+    [userBookId, status, rating, note, readingYear, startDate, finishDate]
+  );
+
+  return result.rows[0];
+};
+
 module.exports = {
   TABLE_NAME,
   STATUSES,
   createUserBook,
   getUserLibrary,
+  getUserBookDetail,
+  updateUserBook,
 };

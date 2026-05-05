@@ -41,6 +41,35 @@ const upload = multer({
   },
 });
 
+router.get("/detail/:userBookId", userBookController.getUserBookDetail);
+
+router.post("/:userBookId/start-reading", userBookController.startReadingBook);
+
+router.post("/manual/:userBookId/update", (req, res, next) => {
+  upload.single("cover")(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    if (error instanceof multer.MulterError) {
+      const message = error.code === "LIMIT_FILE_SIZE"
+        ? "Cover image must be 5MB or smaller"
+        : error.message;
+
+      return res.status(400).json({
+        success: false,
+        message,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Invalid cover upload",
+    });
+  });
+}, userBookController.updateManualBook);
+
 router.get("/:userId", userBookController.getUserLibrary);
 
 router.post("/manual", (req, res, next) => {
