@@ -102,6 +102,17 @@ const createManualBook = async ({
   }
 };
 
+const getUserLibrary = async (userIdParam) => {
+  const userId = Number(userIdParam);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error("Invalid user id");
+  }
+
+  return userBookModel.getUserLibrary(userId);
+};
+
 module.exports = {
   createManualBook,
+  getUserLibrary,
 };

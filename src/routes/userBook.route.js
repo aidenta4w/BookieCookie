@@ -41,6 +41,8 @@ const upload = multer({
   },
 });
 
+router.get("/:userId", userBookController.getUserLibrary);
+
 router.post("/manual", (req, res, next) => {
   upload.single("cover")(req, res, (error) => {
     if (!error) {

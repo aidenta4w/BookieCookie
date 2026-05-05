@@ -33,8 +33,34 @@ const createUserBook = async ({
   return result.rows[0];
 };
 
+const getUserLibrary = async (userId, client = pool) => {
+  const result = await client.query(
+    `SELECT
+        ub.id,
+        ub.book_id,
+        ub.status,
+        ub.rating,
+        ub.note,
+        ub.reading_year,
+        ub.start_date,
+        ub.finish_date,
+        ub.updated_at,
+        b.title,
+        b.author,
+        b.cover_image_url
+     FROM user_books ub
+     INNER JOIN books b ON b.id = ub.book_id
+     WHERE ub.user_id = $1
+     ORDER BY ub.updated_at DESC, ub.id DESC`,
+    [userId]
+  );
+
+  return result.rows;
+};
+
 module.exports = {
   TABLE_NAME,
   STATUSES,
   createUserBook,
+  getUserLibrary,
 };
