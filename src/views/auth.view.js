@@ -22,6 +22,14 @@ const profileSuccess = (res, user) => {
   });
 };
 
+const profileUpdatedSuccess = (res, user) => {
+  return res.status(200).json({
+    success: true,
+    message: "Update profile successfully",
+    data: user,
+  });
+};
+
 const errorResponse = (res, statusCode, error) => {
   return res.status(statusCode).json({
     success: false,
@@ -33,5 +41,6 @@ module.exports = {
   signupSuccess,
   loginSuccess,
   profileSuccess,
+  profileUpdatedSuccess,
   errorResponse,
 };

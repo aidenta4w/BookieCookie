@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/user.model");
+const { uploadBufferToCloudinary } = require("../config/cloudinary");
 
 const signup = async ({ name, email, password, avatar_url, bio }) => {
   const existedUser = await userModel.findByEmail(email);
@@ -90,8 +91,71 @@ const getMe = async (authorizationHeader) => {
   };
 };
 
+const updateProfile = async (authorizationHeader, payload, avatarFile) => {
+  if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+    throw new Error("Unauthorized");
+  }
+
+  const token = authorizationHeader.slice("Bearer ".length).trim();
+
+  if (!token) {
+    throw new Error("Unauthorized");
+  }
+
+  let jwtPayload;
+
+  try {
+    jwtPayload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    throw new Error("Unauthorized");
+  }
+
+  const existingUser = await userModel.findById(jwtPayload.id);
+
+  if (!existingUser) {
+    throw new Error("User not found");
+  }
+
+  const normalizedName = `${payload.name ?? ""}`.trim();
+  const normalizedBio = `${payload.bio ?? ""}`.trim();
+
+  if (!normalizedName) {
+    throw new Error("Name is required");
+  }
+
+  let avatarUrl = existingUser.avatar_url ?? null;
+
+  if (avatarFile?.buffer) {
+    const uploadResult = await uploadBufferToCloudinary(avatarFile.buffer, {
+      originalFilename: avatarFile.originalname,
+      folder: "bookiecookie/avatars",
+    });
+    avatarUrl = uploadResult.secure_url;
+  }
+
+  const updatedUser = await userModel.updateUserProfile({
+    id: existingUser.id,
+    name: normalizedName,
+    bio: normalizedBio || null,
+    avatarUrl,
+  });
+
+  if (!updatedUser) {
+    throw new Error("Could not update profile");
+  }
+
+  return {
+    id: updatedUser.id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    avatar_url: updatedUser.avatar_url,
+    bio: updatedUser.bio,
+  };
+};
+
 module.exports = {
   signup,
   login,
   getMe,
+  updateProfile,
 };
