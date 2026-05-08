@@ -14,6 +14,14 @@ const loginSuccess = (res, result) => {
   });
 };
 
+const profileSuccess = (res, user) => {
+  return res.status(200).json({
+    success: true,
+    message: "Fetch profile successfully",
+    data: user,
+  });
+};
+
 const errorResponse = (res, statusCode, error) => {
   return res.status(statusCode).json({
     success: false,
@@ -24,5 +32,6 @@ const errorResponse = (res, statusCode, error) => {
 module.exports = {
   signupSuccess,
   loginSuccess,
+  profileSuccess,
   errorResponse,
 };

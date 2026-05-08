@@ -19,7 +19,18 @@ const login = async (req, res) => {
   }
 };
 
+const me = async (req, res) => {
+  try {
+    const user = await authViewModel.getMe(req.headers.authorization);
+    return authView.profileSuccess(res, user);
+  } catch (error) {
+    const statusCode = error.message === "Unauthorized" ? 401 : 404;
+    return authView.errorResponse(res, statusCode, error);
+  }
+};
+
 module.exports = {
   signup,
   login,
+  me,
 };

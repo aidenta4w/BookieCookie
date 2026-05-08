@@ -56,7 +56,42 @@ const login = async ({ email, password }) => {
   };
 };
 
+const getMe = async (authorizationHeader) => {
+  if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+    throw new Error("Unauthorized");
+  }
+
+  const token = authorizationHeader.slice("Bearer ".length).trim();
+
+  if (!token) {
+    throw new Error("Unauthorized");
+  }
+
+  let payload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    throw new Error("Unauthorized");
+  }
+
+  const user = await userModel.findById(payload.id);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    avatar_url: user.avatar_url,
+    bio: user.bio,
+  };
+};
+
 module.exports = {
   signup,
   login,
+  getMe,
 };

@@ -59,4 +59,22 @@ router.post("/signup", authController.signup);
  */
 router.post("/login", authController.login);
 
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user profile fetched successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+router.get("/me", authController.me);
+
 module.exports = router;
