@@ -29,8 +29,27 @@ const me = async (req, res) => {
   }
 };
 
+const updateProfile = async (req, res) => {
+  try {
+    const user = await authViewModel.updateProfile(
+      req.headers.authorization,
+      req.body,
+      req.file
+    );
+    return authView.profileUpdatedSuccess(res, user);
+  } catch (error) {
+    const statusCode = error.message === "Unauthorized"
+      ? 401
+      : error.message === "User not found"
+        ? 404
+        : 400;
+    return authView.errorResponse(res, statusCode, error);
+  }
+};
+
 module.exports = {
   signup,
   login,
   me,
+  updateProfile,
 };
