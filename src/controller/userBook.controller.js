@@ -93,10 +93,51 @@ const startReadingBook = async (req, res) => {
   }
 };
 
+const saveReadingSession = async (req, res) => {
+  try {
+    const data = await userBookViewModel.saveReadingSession(
+      req.params.userBookId,
+      req.body
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Reading session saved",
+      data,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const getReadingSessions = async (req, res) => {
+  try {
+    const data = await userBookViewModel.getReadingSessions(
+      req.params.userBookId,
+      req.query.userId
+    );
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createManualBook,
   getUserLibrary,
   getUserBookDetail,
   updateManualBook,
   startReadingBook,
+  saveReadingSession,
+  getReadingSessions,
 };

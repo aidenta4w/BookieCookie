@@ -115,6 +115,51 @@ const updateUserBook = async ({
   return result.rows[0];
 };
 
+const createReadingSession = async ({
+  userId,
+  userBookId,
+  durationMinutes,
+  pagesRead = 0,
+  client = pool,
+}) => {
+  const result = await client.query(
+    `INSERT INTO reading_sessions (
+      user_id,
+      user_book_id,
+      duration_minutes,
+      pages_read
+    )
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, user_id, user_book_id, duration_minutes, pages_read, created_at`,
+    [userId, userBookId, durationMinutes, pagesRead]
+  );
+
+  return result.rows[0];
+};
+
+const getReadingSessionsByUserBook = async ({
+  userBookId,
+  userId,
+  client = pool,
+}) => {
+  const result = await client.query(
+    `SELECT
+        id,
+        user_id,
+        user_book_id,
+        duration_minutes,
+        pages_read,
+        created_at
+     FROM reading_sessions
+     WHERE user_book_id = $1
+       AND user_id = $2
+     ORDER BY created_at DESC, id DESC`,
+    [userBookId, userId]
+  );
+
+  return result.rows;
+};
+
 module.exports = {
   TABLE_NAME,
   STATUSES,
@@ -122,4 +167,6 @@ module.exports = {
   getUserLibrary,
   getUserBookDetail,
   updateUserBook,
+  createReadingSession,
+  getReadingSessionsByUserBook,
 };

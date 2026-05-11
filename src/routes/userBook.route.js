@@ -42,8 +42,10 @@ const upload = multer({
 });
 
 router.get("/detail/:userBookId", userBookController.getUserBookDetail);
+router.get("/:userBookId/reading-sessions", userBookController.getReadingSessions);
 
 router.post("/:userBookId/start-reading", userBookController.startReadingBook);
+router.post("/:userBookId/reading-sessions", userBookController.saveReadingSession);
 
 router.post("/manual/:userBookId/update", (req, res, next) => {
   upload.single("cover")(req, res, (error) => {

@@ -11,6 +11,16 @@ const parseOptionalNumber = (value) => {
   return Number(value);
 };
 
+const parseRequiredPositiveInteger = (value, fieldName) => {
+  const parsedValue = Number(value);
+
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    throw new Error(`Invalid ${fieldName}`);
+  }
+
+  return parsedValue;
+};
+
 const normalizeManualBookPayload = ({
   user_id,
   title,
@@ -319,10 +329,92 @@ const startReadingBook = async (userBookIdParam, userIdParam) => {
   }
 };
 
+const saveReadingSession = async (userBookIdParam, payload) => {
+  const parsedUserBookId = parseRequiredPositiveInteger(
+    userBookIdParam,
+    "user book id"
+  );
+  const parsedUserId = parseRequiredPositiveInteger(payload?.user_id, "user id");
+  const parsedDurationMinutes = parseRequiredPositiveInteger(
+    payload?.duration_minutes,
+    "duration minutes"
+  );
+  const parsedPagesRead = payload?.pages_read === undefined || payload?.pages_read === null || payload?.pages_read === ""
+    ? 0
+    : Number(payload.pages_read);
+
+  if (!Number.isInteger(parsedPagesRead) || parsedPagesRead < 0) {
+    throw new Error("Invalid pages read");
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const existingDetail = await userBookModel.getUserBookDetail({
+      userBookId: parsedUserBookId,
+      userId: parsedUserId,
+      client,
+    });
+
+    if (!existingDetail) {
+      throw new Error("Book detail not found");
+    }
+
+    const session = await userBookModel.createReadingSession({
+      userId: parsedUserId,
+      userBookId: parsedUserBookId,
+      durationMinutes: parsedDurationMinutes,
+      pagesRead: parsedPagesRead,
+      client,
+    });
+
+    if (existingDetail.status !== "reading") {
+      await userBookModel.updateUserBook({
+        userBookId: parsedUserBookId,
+        status: "reading",
+        rating: existingDetail.rating,
+        note: existingDetail.note,
+        readingYear:
+          existingDetail.reading_year ?? new Date().getUTCFullYear(),
+        startDate:
+          existingDetail.start_date || new Date().toISOString().split("T")[0],
+        finishDate: existingDetail.finish_date,
+        client,
+      });
+    }
+
+    await client.query("COMMIT");
+
+    return session;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const getReadingSessions = async (userBookIdParam, userIdParam) => {
+  const parsedUserBookId = parseRequiredPositiveInteger(
+    userBookIdParam,
+    "user book id"
+  );
+  const parsedUserId = parseRequiredPositiveInteger(userIdParam, "user id");
+
+  return userBookModel.getReadingSessionsByUserBook({
+    userBookId: parsedUserBookId,
+    userId: parsedUserId,
+  });
+};
+
 module.exports = {
   createManualBook,
   getUserLibrary,
   getUserBookDetail,
   updateManualBook,
   startReadingBook,
+  saveReadingSession,
+  getReadingSessions,
 };
