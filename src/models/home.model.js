@@ -50,10 +50,26 @@ const getFinishedBooksInYear = async (userId, year) => {
 
 const getReadingActivityDates = async (userId) => {
   const result = await pool.query(
-    `SELECT DISTINCT DATE(updated_at) AS activity_date
-     FROM user_books
-     WHERE user_id = $1
-       AND status IN ('reading', 'finished')
+    `SELECT activity_date
+     FROM (
+       SELECT DISTINCT DATE(created_at) AS activity_date
+       FROM reading_sessions
+       WHERE user_id = $1
+
+       UNION
+
+       SELECT DISTINCT DATE(created_at) AS activity_date
+       FROM quotes
+       WHERE user_id = $1
+
+       UNION
+
+       SELECT DISTINCT COALESCE(finish_date, DATE(updated_at)) AS activity_date
+       FROM user_books
+       WHERE user_id = $1
+         AND status = 'finished'
+     ) activity_days
+     WHERE activity_date IS NOT NULL
      ORDER BY activity_date DESC`,
     [userId]
   );
@@ -61,8 +77,151 @@ const getReadingActivityDates = async (userId) => {
   return result.rows.map((row) => row.activity_date);
 };
 
+const getTodayReadingStats = async (userId) => {
+  const result = await pool.query(
+    `SELECT
+        COALESCE(SUM(duration_minutes), 0)::INT AS minutes,
+        COALESCE(SUM(pages_read), 0)::INT AS pages_read
+     FROM reading_sessions
+     WHERE user_id = $1
+       AND created_at >= CURRENT_DATE
+       AND created_at < CURRENT_DATE + INTERVAL '1 day'`,
+    [userId]
+  );
+
+  return result.rows[0];
+};
+
+const getWeeklyReadingStats = async (userId) => {
+  const result = await pool.query(
+    `WITH week_days AS (
+       SELECT generate_series(
+         date_trunc('week', CURRENT_DATE)::DATE,
+         (date_trunc('week', CURRENT_DATE)::DATE + INTERVAL '6 day')::DATE,
+         INTERVAL '1 day'
+       )::DATE AS day_date
+     )
+     SELECT
+       wd.day_date,
+       COALESCE(SUM(rs.duration_minutes), 0)::INT AS minutes,
+       COALESCE(SUM(rs.pages_read), 0)::INT AS pages_read
+     FROM week_days wd
+     LEFT JOIN reading_sessions rs
+       ON rs.user_id = $1
+      AND rs.created_at >= wd.day_date
+      AND rs.created_at < wd.day_date + INTERVAL '1 day'
+     GROUP BY wd.day_date
+     ORDER BY wd.day_date ASC`,
+    [userId]
+  );
+
+  return result.rows;
+};
+
+const getYearlyQuoteCount = async (userId, year) => {
+  const result = await pool.query(
+    `SELECT COUNT(*)::INT AS quote_count
+     FROM quotes
+     WHERE user_id = $1
+       AND created_at >= MAKE_DATE($2, 1, 1)
+       AND created_at < MAKE_DATE($2 + 1, 1, 1)`,
+    [userId, year]
+  );
+
+  return result.rows[0]?.quote_count ?? 0;
+};
+
+const getYearlyReadingMinutes = async (userId, year) => {
+  const result = await pool.query(
+    `SELECT COALESCE(SUM(duration_minutes), 0)::INT AS total_minutes
+     FROM reading_sessions
+     WHERE user_id = $1
+       AND created_at >= MAKE_DATE($2, 1, 1)
+       AND created_at < MAKE_DATE($2 + 1, 1, 1)`,
+    [userId, year]
+  );
+
+  return result.rows[0]?.total_minutes ?? 0;
+};
+
+const getYearlyActivityLevels = async (userId, year) => {
+  const result = await pool.query(
+    `WITH days AS (
+       SELECT generate_series(
+         MAKE_DATE($2, 1, 1),
+         MAKE_DATE($2, 12, 31),
+         INTERVAL '1 day'
+       )::DATE AS day_date
+     ),
+     session_activity AS (
+       SELECT
+         DATE(created_at) AS activity_date,
+         COALESCE(SUM(duration_minutes), 0)::INT AS minutes
+       FROM reading_sessions
+       WHERE user_id = $1
+         AND created_at >= MAKE_DATE($2, 1, 1)
+         AND created_at < MAKE_DATE($2 + 1, 1, 1)
+       GROUP BY DATE(created_at)
+     ),
+     quote_activity AS (
+       SELECT
+         DATE(created_at) AS activity_date,
+         COUNT(*)::INT AS quotes_count
+       FROM quotes
+       WHERE user_id = $1
+         AND created_at >= MAKE_DATE($2, 1, 1)
+         AND created_at < MAKE_DATE($2 + 1, 1, 1)
+       GROUP BY DATE(created_at)
+     )
+     SELECT
+       d.day_date,
+       COALESCE(sa.minutes, 0) AS minutes,
+       COALESCE(qa.quotes_count, 0) AS quotes_count,
+       CASE
+         WHEN COALESCE(sa.minutes, 0) >= 120 THEN 4
+         WHEN COALESCE(sa.minutes, 0) >= 60 THEN 3
+         WHEN COALESCE(sa.minutes, 0) >= 20 THEN 2
+         WHEN COALESCE(sa.minutes, 0) > 0 OR COALESCE(qa.quotes_count, 0) > 0 THEN 1
+         ELSE 0
+       END AS level
+     FROM days d
+     LEFT JOIN session_activity sa ON sa.activity_date = d.day_date
+     LEFT JOIN quote_activity qa ON qa.activity_date = d.day_date
+     ORDER BY d.day_date ASC`,
+    [userId, year]
+  );
+
+  return result.rows;
+};
+
+const getReadingGoals = async (userId, year, month) => {
+  const result = await pool.query(
+    `SELECT
+        id,
+        goal_type,
+        target_value,
+        year,
+        month,
+        created_at
+     FROM reading_goals
+     WHERE user_id = $1
+       AND year = $2
+       AND (month IS NULL OR month = $3)
+     ORDER BY month NULLS FIRST, created_at DESC`,
+    [userId, year, month]
+  );
+
+  return result.rows;
+};
+
 module.exports = {
   getCurrentReadingBooks,
   getFinishedBooksInYear,
   getReadingActivityDates,
+  getTodayReadingStats,
+  getWeeklyReadingStats,
+  getYearlyQuoteCount,
+  getYearlyReadingMinutes,
+  getYearlyActivityLevels,
+  getReadingGoals,
 };
