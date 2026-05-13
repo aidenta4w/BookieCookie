@@ -118,6 +118,36 @@ const getWeeklyReadingStats = async (userId) => {
   return result.rows;
 };
 
+const getMonthlyReadingStats = async (userId) => {
+  const result = await pool.query(
+    `WITH month_days AS (
+       SELECT generate_series(
+         date_trunc('month', CURRENT_DATE)::DATE,
+         (
+           date_trunc('month', CURRENT_DATE)
+           + INTERVAL '1 month'
+           - INTERVAL '1 day'
+         )::DATE,
+         INTERVAL '1 day'
+       )::DATE AS day_date
+     )
+     SELECT
+       md.day_date,
+       COALESCE(SUM(rs.duration_minutes), 0)::INT AS minutes,
+       COALESCE(SUM(rs.pages_read), 0)::INT AS pages_read
+     FROM month_days md
+     LEFT JOIN reading_sessions rs
+       ON rs.user_id = $1
+      AND rs.created_at >= md.day_date
+      AND rs.created_at < md.day_date + INTERVAL '1 day'
+     GROUP BY md.day_date
+     ORDER BY md.day_date ASC`,
+    [userId]
+  );
+
+  return result.rows;
+};
+
 const getYearlyQuoteCount = async (userId, year) => {
   const result = await pool.query(
     `SELECT COUNT(*)::INT AS quote_count
@@ -220,6 +250,7 @@ module.exports = {
   getReadingActivityDates,
   getTodayReadingStats,
   getWeeklyReadingStats,
+  getMonthlyReadingStats,
   getYearlyQuoteCount,
   getYearlyReadingMinutes,
   getYearlyActivityLevels,

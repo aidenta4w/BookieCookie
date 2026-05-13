@@ -26,7 +26,48 @@ const calculateStreakDays = (activityDates) => {
   return streak;
 };
 
+const calculateMaxStreakDays = (activityDates) => {
+  if (activityDates.length === 0) {
+    return 0;
+  }
+
+  const sortedDays = [...new Set(
+    activityDates.map((date) => toDateOnly(new Date(date)).getTime())
+  )].sort((a, b) => a - b);
+
+  let maxStreak = 1;
+  let currentStreak = 1;
+
+  for (let index = 1; index < sortedDays.length; index += 1) {
+    if (sortedDays[index] - sortedDays[index - 1] === DAY_IN_MS) {
+      currentStreak += 1;
+    } else {
+      currentStreak = 1;
+    }
+
+    if (currentStreak > maxStreak) {
+      maxStreak = currentStreak;
+    }
+  }
+
+  return maxStreak;
+};
+
 const toWeekdayLabel = (date) => WEEKDAY_LABELS[(date.getUTCDay() + 6) % 7];
+
+const formatMonthShortLabel = (date) => String(date.getUTCDate()).padStart(2, "0");
+
+const toTimelinePoint = (row, labelBuilder) => {
+  const date = new Date(row.day_date);
+
+  return {
+    label: labelBuilder(date),
+    short_label: labelBuilder(date),
+    date: row.day_date,
+    minutes: Number(row.minutes ?? 0),
+    pages_read: Number(row.pages_read ?? 0),
+  };
+};
 
 const findLatestGoalValue = (goals, goalType, { month = null } = {}) => {
   const matched = goals.find(
@@ -46,6 +87,7 @@ const getDashboard = async (userId) => {
     activityDates,
     todayReading,
     weeklyReading,
+    monthlyReading,
     yearlyQuoteCount,
     yearlyReadingMinutes,
     yearlyActivityRows,
@@ -56,6 +98,7 @@ const getDashboard = async (userId) => {
     homeModel.getReadingActivityDates(userId),
     homeModel.getTodayReadingStats(userId),
     homeModel.getWeeklyReadingStats(userId),
+    homeModel.getMonthlyReadingStats(userId),
     homeModel.getYearlyQuoteCount(userId, year),
     homeModel.getYearlyReadingMinutes(userId, year),
     homeModel.getYearlyActivityLevels(userId, year),
@@ -68,13 +111,20 @@ const getDashboard = async (userId) => {
   const goalMinutes = monthlyHoursGoal > 0
     ? Math.max(1, Math.round((monthlyHoursGoal * 60) / 30))
     : 0;
-  const weeklyStats = weeklyReading.map((row) => ({
-    label: toWeekdayLabel(new Date(row.day_date)),
-    short_label: toWeekdayLabel(new Date(row.day_date)).slice(0, 2),
-    date: row.day_date,
-    minutes: Number(row.minutes ?? 0),
-    pages_read: Number(row.pages_read ?? 0),
-  }));
+  const weeklyStats = weeklyReading.map((row) => {
+    const date = new Date(row.day_date);
+
+    return {
+      label: toWeekdayLabel(date),
+      short_label: toWeekdayLabel(date).slice(0, 2),
+      date: row.day_date,
+      minutes: Number(row.minutes ?? 0),
+      pages_read: Number(row.pages_read ?? 0),
+    };
+  });
+  const monthlyStats = monthlyReading.map((row) =>
+    toTimelinePoint(row, formatMonthShortLabel)
+  );
   const yearlyActivityLevels = yearlyActivityRows.map((row) => Number(row.level ?? 0));
   const activeDays = yearlyActivityRows.filter((row) => Number(row.level ?? 0) > 0).length;
   const now = new Date();
@@ -99,6 +149,7 @@ const getDashboard = async (userId) => {
     })),
     streak: {
       days: calculateStreakDays(activityDates),
+      max_days: calculateMaxStreakDays(activityDates),
       activity_count: activityDates.length,
     },
     finishedInYear: finishedBooks,
@@ -110,6 +161,10 @@ const getDashboard = async (userId) => {
         progress: goalMinutes > 0 ? Math.min(todayMinutes / goalMinutes, 1) : 0,
       },
       week: weeklyStats,
+      chart: {
+        week: weeklyStats,
+        month: monthlyStats,
+      },
       year: {
         reading_hours: Math.floor(yearlyReadingMinutes / 60),
         reading_minutes: yearlyReadingMinutes,
