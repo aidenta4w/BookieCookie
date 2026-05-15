@@ -244,6 +244,49 @@ const getReadingGoals = async (userId, year, month) => {
   return result.rows;
 };
 
+const upsertReadingGoal = async ({
+  userId,
+  goalType,
+  targetValue,
+  year,
+  month = null,
+  client = pool,
+}) => {
+  const updated = await client.query(
+    `UPDATE reading_goals
+     SET target_value = $3,
+         created_at = NOW()
+     WHERE user_id = $1
+       AND goal_type = $2
+       AND year = $4
+       AND (
+         (month IS NULL AND $5::INT IS NULL)
+         OR month = $5
+       )
+     RETURNING id, user_id, goal_type, target_value, year, month, created_at`,
+    [userId, goalType, targetValue, year, month]
+  );
+
+  if (updated.rows[0]) {
+    return updated.rows[0];
+  }
+
+  const inserted = await client.query(
+    `INSERT INTO reading_goals (
+      user_id,
+      goal_type,
+      target_value,
+      year,
+      month
+    )
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id, user_id, goal_type, target_value, year, month, created_at`,
+    [userId, goalType, targetValue, year, month]
+  );
+
+  return inserted.rows[0];
+};
+
 module.exports = {
   getCurrentReadingBooks,
   getFinishedBooksInYear,
@@ -255,4 +298,5 @@ module.exports = {
   getYearlyReadingMinutes,
   getYearlyActivityLevels,
   getReadingGoals,
+  upsertReadingGoal,
 };

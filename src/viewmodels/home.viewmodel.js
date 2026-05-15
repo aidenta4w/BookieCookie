@@ -74,7 +74,7 @@ const findLatestGoalValue = (goals, goalType, { month = null } = {}) => {
     (goal) => goal.goal_type === goalType && goal.month === month
   );
 
-  return matched ? Number(goal.target_value) : 0;
+  return matched ? Number(matched.target_value) : 0;
 };
 
 const getDashboard = async (userId) => {
@@ -189,4 +189,23 @@ const getDashboard = async (userId) => {
 
 module.exports = {
   getDashboard,
+  updateYearlyBookGoal: async (userId, targetValue, year = new Date().getUTCFullYear()) => {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      throw new Error("Invalid user id");
+    }
+
+    const parsedTarget = Number(targetValue);
+
+    if (!Number.isInteger(parsedTarget) || parsedTarget <= 0) {
+      throw new Error("Yearly goal must be a positive integer");
+    }
+
+    return homeModel.upsertReadingGoal({
+      userId,
+      goalType: "books",
+      targetValue: parsedTarget,
+      year,
+      month: null,
+    });
+  },
 };
