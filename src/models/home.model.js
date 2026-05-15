@@ -31,21 +31,40 @@ const getFinishedBooksInYear = async (userId, year) => {
         b.author,
         b.cover_image_url,
         ub.finish_date,
+        ub.updated_at,
         ub.rating
      FROM user_books ub
      INNER JOIN books b ON b.id = ub.book_id
      WHERE ub.user_id = $1
        AND ub.status = 'finished'
-       AND (
-         ub.reading_year = $2
-         OR EXTRACT(YEAR FROM ub.finish_date) = $2
-       )
-     ORDER BY ub.finish_date DESC NULLS LAST, ub.updated_at DESC
+       AND COALESCE(
+         ub.reading_year,
+         EXTRACT(YEAR FROM ub.finish_date)::INT,
+         EXTRACT(YEAR FROM ub.updated_at)::INT
+       ) = $2
+     ORDER BY COALESCE(ub.finish_date, DATE(ub.updated_at)) DESC, ub.updated_at DESC
      LIMIT 12`,
     [userId, year]
   );
 
   return result.rows;
+};
+
+const getFinishedBookCountInYear = async (userId, year) => {
+  const result = await pool.query(
+    `SELECT COUNT(*)::INT AS finished_count
+     FROM user_books ub
+     WHERE ub.user_id = $1
+       AND ub.status = 'finished'
+       AND COALESCE(
+         ub.reading_year,
+         EXTRACT(YEAR FROM ub.finish_date)::INT,
+         EXTRACT(YEAR FROM ub.updated_at)::INT
+       ) = $2`,
+    [userId, year]
+  );
+
+  return result.rows[0]?.finished_count ?? 0;
 };
 
 const getReadingActivityDates = async (userId) => {
@@ -290,6 +309,7 @@ const upsertReadingGoal = async ({
 module.exports = {
   getCurrentReadingBooks,
   getFinishedBooksInYear,
+  getFinishedBookCountInYear,
   getReadingActivityDates,
   getTodayReadingStats,
   getWeeklyReadingStats,

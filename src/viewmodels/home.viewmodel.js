@@ -84,6 +84,7 @@ const getDashboard = async (userId) => {
   const [
     currentReading,
     finishedBooks,
+    finishedBookCount,
     activityDates,
     todayReading,
     weeklyReading,
@@ -95,6 +96,7 @@ const getDashboard = async (userId) => {
   ] = await Promise.all([
     homeModel.getCurrentReadingBooks(userId),
     homeModel.getFinishedBooksInYear(userId, year),
+    homeModel.getFinishedBookCountInYear(userId, year),
     homeModel.getReadingActivityDates(userId),
     homeModel.getTodayReadingStats(userId),
     homeModel.getWeeklyReadingStats(userId),
@@ -168,7 +170,7 @@ const getDashboard = async (userId) => {
       year: {
         reading_hours: Math.floor(yearlyReadingMinutes / 60),
         reading_minutes: yearlyReadingMinutes,
-        books_finished: finishedBooks.length,
+        books_finished: Number(finishedBookCount ?? 0),
         quotes_saved: yearlyQuoteCount,
         current_reading_count: currentReading.length,
         active_days: activeDays,
