@@ -4,6 +4,40 @@ const GOOGLE_BOOKS_BASE_URL = "https://www.googleapis.com/books/v1/volumes";
 const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const searchCache = new Map();
 
+const normalizeImageUrl = (value) => {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+
+  return value.replace(/^http:\/\//i, "https://");
+};
+
+const pickBestImageLink = (imageLinks) => {
+  if (!imageLinks || typeof imageLinks !== "object") {
+    return {
+      thumbnail: null,
+      smallThumbnail: null,
+    };
+  }
+
+  const candidates = [
+    imageLinks.thumbnail,
+    imageLinks.smallThumbnail,
+    imageLinks.small,
+    imageLinks.medium,
+    imageLinks.large,
+    imageLinks.extraLarge,
+  ].map(normalizeImageUrl).filter(Boolean);
+
+  const preferred = candidates[0] ?? null;
+  const fallback = candidates[1] ?? preferred;
+
+  return {
+    thumbnail: preferred,
+    smallThumbnail: fallback,
+  };
+};
+
 const fetchJson = (url) => new Promise((resolve, reject) => {
   const request = https.get(url, (response) => {
     let rawData = "";
@@ -44,6 +78,7 @@ const normalizeSearchResults = (items) => {
     .map((item) => {
       const volumeInfo = item.volumeInfo ?? {};
       const imageLinks = volumeInfo.imageLinks ?? {};
+      const normalizedImageLinks = pickBestImageLink(imageLinks);
 
       return {
         id: item.id ?? "",
@@ -52,10 +87,7 @@ const normalizeSearchResults = (items) => {
           authors: Array.isArray(volumeInfo.authors) ? volumeInfo.authors : [],
           publishedDate: volumeInfo.publishedDate ?? null,
           description: volumeInfo.description ?? null,
-          imageLinks: {
-            thumbnail: imageLinks.thumbnail ?? imageLinks.smallThumbnail ?? null,
-            smallThumbnail: imageLinks.smallThumbnail ?? imageLinks.thumbnail ?? null,
-          },
+          imageLinks: normalizedImageLinks,
         },
       };
     })
