@@ -37,11 +37,7 @@ const getFinishedBooksInYear = async (userId, year) => {
      INNER JOIN books b ON b.id = ub.book_id
      WHERE ub.user_id = $1
        AND ub.status = 'finished'
-       AND COALESCE(
-         ub.reading_year,
-         EXTRACT(YEAR FROM ub.finish_date)::INT,
-         EXTRACT(YEAR FROM ub.updated_at)::INT
-       ) = $2
+       AND COALESCE(EXTRACT(YEAR FROM ub.finish_date)::INT, EXTRACT(YEAR FROM ub.updated_at)::INT) = $2
      ORDER BY COALESCE(ub.finish_date, DATE(ub.updated_at)) DESC, ub.updated_at DESC
      LIMIT 12`,
     [userId, year]
@@ -56,11 +52,7 @@ const getFinishedBookCountInYear = async (userId, year) => {
      FROM user_books ub
      WHERE ub.user_id = $1
        AND ub.status = 'finished'
-       AND COALESCE(
-         ub.reading_year,
-         EXTRACT(YEAR FROM ub.finish_date)::INT,
-         EXTRACT(YEAR FROM ub.updated_at)::INT
-       ) = $2`,
+       AND COALESCE(EXTRACT(YEAR FROM ub.finish_date)::INT, EXTRACT(YEAR FROM ub.updated_at)::INT) = $2`,
     [userId, year]
   );
 

@@ -40,7 +40,6 @@ const initSchema = async () => {
       status VARCHAR(20) NOT NULL CHECK (status IN ('plan_to_read', 'reading', 'finished', 'abandoned')),
       rating INTEGER CHECK (rating BETWEEN 1 AND 5),
       note TEXT,
-      reading_year INTEGER,
       start_date DATE,
       finish_date DATE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -154,6 +153,9 @@ const initSchema = async () => {
         NULLIF(BTRIM(COALESCE(content, '')), '') IS NOT NULL
         OR NULLIF(BTRIM(COALESCE(image_url, '')), '') IS NOT NULL
       );
+
+    ALTER TABLE user_books
+      DROP COLUMN IF EXISTS reading_year;
 
     CREATE INDEX IF NOT EXISTS idx_books_category ON books(category);
     CREATE INDEX IF NOT EXISTS idx_user_books_user_id ON user_books(user_id);

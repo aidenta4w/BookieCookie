@@ -9,7 +9,6 @@ const createUserBook = async ({
   status = "plan_to_read",
   rating = null,
   note = null,
-  readingYear = null,
   startDate = null,
   finishDate = null,
   client = pool,
@@ -21,13 +20,12 @@ const createUserBook = async ({
       status,
       rating,
       note,
-      reading_year,
       start_date,
       finish_date
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING id, user_id, book_id, status, rating, note, reading_year, start_date, finish_date, created_at, updated_at`,
-    [userId, bookId, status, rating, note, readingYear, startDate, finishDate]
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING id, user_id, book_id, status, rating, note, start_date, finish_date, created_at, updated_at`,
+    [userId, bookId, status, rating, note, startDate, finishDate]
   );
 
   return result.rows[0];
@@ -41,7 +39,6 @@ const getUserLibrary = async (userId, client = pool) => {
         ub.status,
         ub.rating,
         ub.note,
-        ub.reading_year,
         ub.start_date,
         ub.finish_date,
         ub.updated_at,
@@ -67,7 +64,6 @@ const getUserBookDetail = async ({ userBookId, userId, client = pool }) => {
         ub.status,
         ub.rating,
         ub.note,
-        ub.reading_year,
         ub.start_date,
         ub.finish_date,
         ub.created_at,
@@ -94,7 +90,6 @@ const updateUserBook = async ({
   status,
   rating,
   note,
-  readingYear,
   startDate,
   finishDate,
   client = pool,
@@ -104,12 +99,11 @@ const updateUserBook = async ({
      SET status = $2,
          rating = $3,
          note = $4,
-         reading_year = $5,
-         start_date = $6,
-         finish_date = $7
+         start_date = $5,
+         finish_date = $6
      WHERE id = $1
-     RETURNING id, user_id, book_id, status, rating, note, reading_year, start_date, finish_date, created_at, updated_at`,
-    [userBookId, status, rating, note, readingYear, startDate, finishDate]
+     RETURNING id, user_id, book_id, status, rating, note, start_date, finish_date, created_at, updated_at`,
+    [userBookId, status, rating, note, startDate, finishDate]
   );
 
   return result.rows[0];

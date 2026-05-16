@@ -34,6 +34,20 @@ const toDateKey = (value) => {
   return `${value}`.slice(0, 10);
 };
 
+const parseOptionalDate = (value, fieldName) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const normalizedValue = `${value}`.trim();
+  const parsedDate = new Date(normalizedValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    throw new Error(`Invalid ${fieldName}`);
+  }
+
+  return normalizedValue.slice(0, 10);
+};
+
 const resolveFinishedStatDate = (detail) =>
   toDateKey(detail?.finish_date) ?? toDateKey(detail?.updated_at);
 
@@ -56,7 +70,6 @@ const normalizeManualBookPayload = ({
   status,
   rating,
   note,
-  reading_year,
   start_date,
   finish_date,
 }) => {
@@ -66,7 +79,8 @@ const normalizeManualBookPayload = ({
   const normalizedStatus = `${status ?? "plan_to_read"}`.trim() || "plan_to_read";
   const normalizedNote = `${note ?? ""}`.trim();
   const parsedRating = parseOptionalNumber(rating);
-  const parsedReadingYear = parseOptionalNumber(reading_year);
+  const parsedStartDate = parseOptionalDate(start_date, "start date");
+  const parsedFinishDate = parseOptionalDate(finish_date, "finish date");
 
   if (!Number.isInteger(userId) || userId <= 0) {
     throw new Error("Invalid user id");
@@ -88,10 +102,11 @@ const normalizeManualBookPayload = ({
   }
 
   if (
-    parsedReadingYear !== null &&
-    (!Number.isInteger(parsedReadingYear) || parsedReadingYear < 0)
+    parsedStartDate !== null &&
+    parsedFinishDate !== null &&
+    new Date(parsedFinishDate) <= new Date(parsedStartDate)
   ) {
-    throw new Error("Reading year must be a valid number");
+    throw new Error("Finish date must be after start date");
   }
 
   return {
@@ -101,9 +116,8 @@ const normalizeManualBookPayload = ({
     normalizedStatus,
     normalizedNote,
     parsedRating,
-    parsedReadingYear,
-    startDate: start_date || null,
-    finishDate: finish_date || null,
+    startDate: parsedStartDate,
+    finishDate: parsedFinishDate,
   };
 };
 
@@ -114,7 +128,6 @@ const createManualBook = async ({
   status,
   rating,
   note,
-  reading_year,
   start_date,
   finish_date,
 }, coverFile) => {
@@ -125,7 +138,6 @@ const createManualBook = async ({
     normalizedStatus,
     normalizedNote,
     parsedRating,
-    parsedReadingYear,
     startDate,
     finishDate,
   } = normalizeManualBookPayload({
@@ -135,7 +147,6 @@ const createManualBook = async ({
     status,
     rating,
     note,
-    reading_year,
     start_date,
     finish_date,
   });
@@ -168,7 +179,6 @@ const createManualBook = async ({
       status: normalizedStatus,
       rating: parsedRating,
       note: normalizedNote || null,
-      readingYear: parsedReadingYear,
       startDate,
       finishDate,
       client,
@@ -244,7 +254,6 @@ const updateManualBook = async (userBookIdParam, payload, coverFile) => {
     normalizedStatus,
     normalizedNote,
     parsedRating,
-    parsedReadingYear,
     startDate,
     finishDate,
   } = normalizeManualBookPayload(payload);
@@ -287,7 +296,6 @@ const updateManualBook = async (userBookIdParam, payload, coverFile) => {
       status: normalizedStatus,
       rating: parsedRating,
       note: normalizedNote || null,
-      readingYear: parsedReadingYear,
       startDate,
       finishDate,
       client,
@@ -351,7 +359,6 @@ const startReadingBook = async (userBookIdParam, userIdParam) => {
       status: "reading",
       rating: existingDetail.rating,
       note: existingDetail.note,
-      readingYear: existingDetail.reading_year,
       startDate: existingDetail.start_date || new Date().toISOString().split("T")[0],
       finishDate: existingDetail.finish_date,
       client,
@@ -427,8 +434,6 @@ const saveReadingSession = async (userBookIdParam, payload) => {
         status: "reading",
         rating: existingDetail.rating,
         note: existingDetail.note,
-        readingYear:
-          existingDetail.reading_year ?? new Date().getUTCFullYear(),
         startDate:
           existingDetail.start_date || new Date().toISOString().split("T")[0],
         finishDate: existingDetail.finish_date,
