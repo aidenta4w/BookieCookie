@@ -3,6 +3,10 @@ const homeViewModel = require("../viewmodels/home.viewmodel");
 const getDashboard = async (req, res) => {
   try {
     const userId = Number(req.params.userId);
+    const requestedYear = Number(req.query.year);
+    const year = Number.isInteger(requestedYear) && requestedYear > 0
+      ? requestedYear
+      : undefined;
 
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(400).json({
@@ -11,7 +15,7 @@ const getDashboard = async (req, res) => {
       });
     }
 
-    const data = await homeViewModel.getDashboard(userId);
+    const data = await homeViewModel.getDashboard(userId, year);
 
     return res.status(200).json({
       success: true,
@@ -29,6 +33,10 @@ const getDashboard = async (req, res) => {
 const getStatistics = async (req, res) => {
   try {
     const userId = Number(req.params.userId);
+    const requestedYear = Number(req.query.year);
+    const year = Number.isInteger(requestedYear) && requestedYear > 0
+      ? requestedYear
+      : undefined;
 
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(400).json({
@@ -37,7 +45,7 @@ const getStatistics = async (req, res) => {
       });
     }
 
-    const data = await homeViewModel.getDashboard(userId);
+    const data = await homeViewModel.getDashboard(userId, year);
 
     return res.status(200).json({
       success: true,

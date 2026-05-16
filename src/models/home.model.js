@@ -111,12 +111,12 @@ const getTodayReadingStats = async (userId) => {
   return result.rows[0];
 };
 
-const getWeeklyReadingStats = async (userId) => {
+const getWeeklyReadingStats = async (userId, anchorDate) => {
   const result = await pool.query(
     `WITH week_days AS (
        SELECT generate_series(
-         date_trunc('week', CURRENT_DATE)::DATE,
-         (date_trunc('week', CURRENT_DATE)::DATE + INTERVAL '6 day')::DATE,
+         date_trunc('week', $2::DATE)::DATE,
+         (date_trunc('week', $2::DATE)::DATE + INTERVAL '6 day')::DATE,
          INTERVAL '1 day'
        )::DATE AS day_date
      )
@@ -131,19 +131,19 @@ const getWeeklyReadingStats = async (userId) => {
       AND rs.created_at < wd.day_date + INTERVAL '1 day'
      GROUP BY wd.day_date
      ORDER BY wd.day_date ASC`,
-    [userId]
+    [userId, anchorDate]
   );
 
   return result.rows;
 };
 
-const getMonthlyReadingStats = async (userId) => {
+const getMonthlyReadingStats = async (userId, anchorDate) => {
   const result = await pool.query(
     `WITH month_days AS (
        SELECT generate_series(
-         date_trunc('month', CURRENT_DATE)::DATE,
+         date_trunc('month', $2::DATE)::DATE,
          (
-           date_trunc('month', CURRENT_DATE)
+           date_trunc('month', $2::DATE)
            + INTERVAL '1 month'
            - INTERVAL '1 day'
          )::DATE,
@@ -161,7 +161,7 @@ const getMonthlyReadingStats = async (userId) => {
       AND rs.created_at < md.day_date + INTERVAL '1 day'
      GROUP BY md.day_date
      ORDER BY md.day_date ASC`,
-    [userId]
+    [userId, anchorDate]
   );
 
   return result.rows;

@@ -77,9 +77,16 @@ const findLatestGoalValue = (goals, goalType, { month = null } = {}) => {
   return matched ? Number(matched.target_value) : 0;
 };
 
-const getDashboard = async (userId) => {
-  const year = new Date().getUTCFullYear();
-  const month = new Date().getUTCMonth() + 1;
+const getDashboard = async (userId, requestedYear) => {
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const year =
+    Number.isInteger(requestedYear) && requestedYear > 0
+      ? requestedYear
+      : currentYear;
+  const anchorDate =
+    year === currentYear ? now : new Date(Date.UTC(year, 11, 31));
+  const month = anchorDate.getUTCMonth() + 1;
 
   const [
     currentReading,
@@ -99,8 +106,8 @@ const getDashboard = async (userId) => {
     homeModel.getFinishedBookCountInYear(userId, year),
     homeModel.getReadingActivityDates(userId),
     homeModel.getTodayReadingStats(userId),
-    homeModel.getWeeklyReadingStats(userId),
-    homeModel.getMonthlyReadingStats(userId),
+    homeModel.getWeeklyReadingStats(userId, anchorDate),
+    homeModel.getMonthlyReadingStats(userId, anchorDate),
     homeModel.getYearlyQuoteCount(userId, year),
     homeModel.getYearlyReadingMinutes(userId, year),
     homeModel.getYearlyActivityLevels(userId, year),
@@ -129,11 +136,14 @@ const getDashboard = async (userId) => {
   );
   const yearlyActivityLevels = yearlyActivityRows.map((row) => Number(row.level ?? 0));
   const activeDays = yearlyActivityRows.filter((row) => Number(row.level ?? 0) > 0).length;
-  const now = new Date();
   const elapsedDays = Math.max(
     1,
     Math.floor(
-      (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
+      (Date.UTC(
+        anchorDate.getUTCFullYear(),
+        anchorDate.getUTCMonth(),
+        anchorDate.getUTCDate()
+      ) -
         Date.UTC(year, 0, 1)) /
         DAY_IN_MS
     ) + 1

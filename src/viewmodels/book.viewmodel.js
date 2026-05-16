@@ -38,6 +38,31 @@ const pickBestImageLink = (imageLinks) => {
   };
 };
 
+const extractIsbn = (industryIdentifiers) => {
+  if (!Array.isArray(industryIdentifiers)) {
+    return null;
+  }
+
+  const normalizedIdentifiers = industryIdentifiers.filter(
+    (identifier) =>
+      identifier &&
+      typeof identifier === "object" &&
+      typeof identifier.identifier === "string"
+  );
+
+  const isbn13 = normalizedIdentifiers.find(
+    (identifier) => identifier.type === "ISBN_13"
+  );
+  if (isbn13?.identifier) {
+    return isbn13.identifier;
+  }
+
+  const isbn10 = normalizedIdentifiers.find(
+    (identifier) => identifier.type === "ISBN_10"
+  );
+  return isbn10?.identifier ?? null;
+};
+
 const fetchJson = (url) => new Promise((resolve, reject) => {
   const request = https.get(url, (response) => {
     let rawData = "";
@@ -79,12 +104,16 @@ const normalizeSearchResults = (items) => {
       const volumeInfo = item.volumeInfo ?? {};
       const imageLinks = volumeInfo.imageLinks ?? {};
       const normalizedImageLinks = pickBestImageLink(imageLinks);
+      const industryIdentifiers = Array.isArray(volumeInfo.industryIdentifiers)
+        ? volumeInfo.industryIdentifiers
+        : [];
 
       return {
         id: item.id ?? "",
         volumeInfo: {
           title: volumeInfo.title ?? "Untitled",
           authors: Array.isArray(volumeInfo.authors) ? volumeInfo.authors : [],
+          isbn: extractIsbn(industryIdentifiers),
           publishedDate: volumeInfo.publishedDate ?? null,
           description: volumeInfo.description ?? null,
           imageLinks: normalizedImageLinks,
