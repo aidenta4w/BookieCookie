@@ -1,6 +1,7 @@
 const { pool } = require("../config/db");
 const { uploadBufferToCloudinary } = require("../config/cloudinary");
 const quoteModel = require("../models/quote.model");
+const statisticModel = require("../models/statistic.model");
 const userBookModel = require("../models/userBook.model");
 
 const parseRequiredPositiveInteger = (value, fieldName) => {
@@ -39,6 +40,18 @@ const parseOptionalConfidence = (value) => {
   }
 
   return parsedValue;
+};
+
+const toDateKey = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return `${value}`.slice(0, 10);
 };
 
 const createQuote = async (payload, imageFile) => {
@@ -100,6 +113,12 @@ const createQuote = async (payload, imageFile) => {
       ocrText: ocrText || null,
       ocrStatus,
       ocrConfidence,
+      client,
+    });
+
+    await statisticModel.rebuildDailyStatistic({
+      userId,
+      statDate: toDateKey(quote.created_at),
       client,
     });
 

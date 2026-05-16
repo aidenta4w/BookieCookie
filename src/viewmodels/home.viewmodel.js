@@ -6,7 +6,7 @@ const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const toDateOnly = (date) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
-const calculateStreakDays = (activityDates) => {
+const calculateStreakDays = (activityDates, referenceDate = new Date()) => {
   if (activityDates.length === 0) {
     return 0;
   }
@@ -15,7 +15,7 @@ const calculateStreakDays = (activityDates) => {
     activityDates.map((date) => toDateOnly(new Date(date)).toISOString())
   );
 
-  let cursor = toDateOnly(new Date());
+  let cursor = toDateOnly(new Date(referenceDate));
   let streak = 0;
 
   while (activitySet.has(cursor.toISOString())) {
@@ -93,6 +93,7 @@ const getDashboard = async (userId, requestedYear) => {
     finishedBooks,
     finishedBookCount,
     activityDates,
+    currentDate,
     todayReading,
     weeklyReading,
     monthlyReading,
@@ -105,6 +106,7 @@ const getDashboard = async (userId, requestedYear) => {
     homeModel.getFinishedBooksInYear(userId, year),
     homeModel.getFinishedBookCountInYear(userId, year),
     homeModel.getReadingActivityDates(userId),
+    homeModel.getCurrentDate(),
     homeModel.getTodayReadingStats(userId),
     homeModel.getWeeklyReadingStats(userId, anchorDate),
     homeModel.getMonthlyReadingStats(userId, anchorDate),
@@ -160,7 +162,7 @@ const getDashboard = async (userId, requestedYear) => {
       updated_at: book.updated_at,
     })),
     streak: {
-      days: calculateStreakDays(activityDates),
+      days: calculateStreakDays(activityDates, currentDate ?? now),
       max_days: calculateMaxStreakDays(activityDates),
       activity_count: activityDates.length,
     },

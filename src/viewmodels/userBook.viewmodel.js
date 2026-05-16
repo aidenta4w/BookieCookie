@@ -1,5 +1,6 @@
 const { pool } = require("../config/db");
 const bookModel = require("../models/book.model");
+const statisticModel = require("../models/statistic.model");
 const userBookModel = require("../models/userBook.model");
 const { uploadBufferToCloudinary } = require("../config/cloudinary");
 
@@ -19,6 +20,33 @@ const parseRequiredPositiveInteger = (value, fieldName) => {
   }
 
   return parsedValue;
+};
+
+const toDateKey = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return `${value}`.slice(0, 10);
+};
+
+const resolveFinishedStatDate = (detail) =>
+  toDateKey(detail?.finish_date) ?? toDateKey(detail?.updated_at);
+
+const rebuildStatisticDates = async ({ userId, dates, client }) => {
+  const uniqueDates = [...new Set(dates.filter(Boolean))];
+
+  for (const statDate of uniqueDates) {
+    await statisticModel.rebuildDailyStatistic({
+      userId,
+      statDate,
+      client,
+    });
+  }
 };
 
 const normalizeManualBookPayload = ({
@@ -146,6 +174,14 @@ const createManualBook = async ({
       client,
     });
 
+    if (normalizedStatus === "finished") {
+      await rebuildStatisticDates({
+        userId,
+        dates: [resolveFinishedStatDate(userBook)],
+        client,
+      });
+    }
+
     await client.query("COMMIT");
 
     return {
@@ -246,7 +282,7 @@ const updateManualBook = async (userBookIdParam, payload, coverFile) => {
       client,
     });
 
-    await userBookModel.updateUserBook({
+    const updatedBook = await userBookModel.updateUserBook({
       userBookId: parsedUserBookId,
       status: normalizedStatus,
       rating: parsedRating,
@@ -254,6 +290,15 @@ const updateManualBook = async (userBookIdParam, payload, coverFile) => {
       readingYear: parsedReadingYear,
       startDate,
       finishDate,
+      client,
+    });
+
+    await rebuildStatisticDates({
+      userId,
+      dates: [
+        resolveFinishedStatDate(existingDetail),
+        resolveFinishedStatDate(updatedBook),
+      ],
       client,
     });
 
@@ -367,6 +412,12 @@ const saveReadingSession = async (userBookIdParam, payload) => {
       userBookId: parsedUserBookId,
       durationMinutes: parsedDurationMinutes,
       pagesRead: parsedPagesRead,
+      client,
+    });
+
+    await rebuildStatisticDates({
+      userId: parsedUserId,
+      dates: [toDateKey(session.created_at)],
       client,
     });
 

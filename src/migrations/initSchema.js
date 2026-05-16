@@ -110,6 +110,20 @@ const initSchema = async () => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS user_daily_statistics (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      stat_date DATE NOT NULL,
+      reading_minutes INTEGER NOT NULL DEFAULT 0 CHECK (reading_minutes >= 0),
+      pages_read INTEGER NOT NULL DEFAULT 0 CHECK (pages_read >= 0),
+      quotes_count INTEGER NOT NULL DEFAULT 0 CHECK (quotes_count >= 0),
+      finished_books_count INTEGER NOT NULL DEFAULT 0 CHECK (finished_books_count >= 0),
+      activity_level INTEGER NOT NULL DEFAULT 0 CHECK (activity_level BETWEEN 0 AND 4),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT user_daily_statistics_unique_user_date UNIQUE (user_id, stat_date)
+    );
+
     ALTER TABLE quotes
       ADD COLUMN IF NOT EXISTS image_url TEXT,
       ADD COLUMN IF NOT EXISTS ocr_text TEXT,
@@ -156,8 +170,94 @@ const initSchema = async () => {
     CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement_id ON user_achievements(achievement_id);
     CREATE INDEX IF NOT EXISTS idx_reading_goals_user_id ON reading_goals(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_daily_statistics_user_id ON user_daily_statistics(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_daily_statistics_stat_date ON user_daily_statistics(stat_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_user_daily_statistics_user_date_level
+      ON user_daily_statistics(user_id, stat_date DESC, activity_level);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_goals_unique_scope
       ON reading_goals(user_id, goal_type, year, COALESCE(month, 0));
+
+    INSERT INTO user_daily_statistics (
+      user_id,
+      stat_date,
+      reading_minutes,
+      pages_read,
+      quotes_count,
+      finished_books_count,
+      activity_level
+    )
+    WITH reading_stats AS (
+      SELECT
+        user_id,
+        DATE(created_at) AS stat_date,
+        COALESCE(SUM(duration_minutes), 0)::INT AS reading_minutes,
+        COALESCE(SUM(pages_read), 0)::INT AS pages_read
+      FROM reading_sessions
+      GROUP BY user_id, DATE(created_at)
+    ),
+    quote_stats AS (
+      SELECT
+        user_id,
+        DATE(created_at) AS stat_date,
+        COUNT(*)::INT AS quotes_count
+      FROM quotes
+      GROUP BY user_id, DATE(created_at)
+    ),
+    finished_stats AS (
+      SELECT
+        user_id,
+        COALESCE(finish_date, DATE(updated_at)) AS stat_date,
+        COUNT(*)::INT AS finished_books_count
+      FROM user_books
+      WHERE status = 'finished'
+      GROUP BY user_id, COALESCE(finish_date, DATE(updated_at))
+    ),
+    merged AS (
+      SELECT
+        COALESCE(r.user_id, q.user_id, f.user_id) AS user_id,
+        COALESCE(r.stat_date, q.stat_date, f.stat_date) AS stat_date,
+        COALESCE(r.reading_minutes, 0) AS reading_minutes,
+        COALESCE(r.pages_read, 0) AS pages_read,
+        COALESCE(q.quotes_count, 0) AS quotes_count,
+        COALESCE(f.finished_books_count, 0) AS finished_books_count
+      FROM reading_stats r
+      FULL OUTER JOIN quote_stats q
+        ON q.user_id = r.user_id
+       AND q.stat_date = r.stat_date
+      FULL OUTER JOIN finished_stats f
+        ON f.user_id = COALESCE(r.user_id, q.user_id)
+       AND f.stat_date = COALESCE(r.stat_date, q.stat_date)
+    )
+    SELECT
+      user_id,
+      stat_date,
+      reading_minutes,
+      pages_read,
+      quotes_count,
+      finished_books_count,
+      CASE
+        WHEN reading_minutes >= 120 THEN 4
+        WHEN reading_minutes >= 60 THEN 3
+        WHEN reading_minutes >= 20 THEN 2
+        WHEN reading_minutes > 0 OR quotes_count > 0 OR finished_books_count > 0 THEN 1
+        ELSE 0
+      END AS activity_level
+    FROM merged
+    WHERE user_id IS NOT NULL
+      AND stat_date IS NOT NULL
+      AND (
+        reading_minutes > 0
+        OR pages_read > 0
+        OR quotes_count > 0
+        OR finished_books_count > 0
+      )
+    ON CONFLICT (user_id, stat_date) DO UPDATE
+    SET reading_minutes = EXCLUDED.reading_minutes,
+        pages_read = EXCLUDED.pages_read,
+        quotes_count = EXCLUDED.quotes_count,
+        finished_books_count = EXCLUDED.finished_books_count,
+        activity_level = EXCLUDED.activity_level,
+        updated_at = CURRENT_TIMESTAMP;
 
     INSERT INTO achievements (name, description, icon_url, target_type, target_value)
     VALUES
@@ -176,6 +276,12 @@ const initSchema = async () => {
     DROP TRIGGER IF EXISTS set_user_books_updated_at ON user_books;
     CREATE TRIGGER set_user_books_updated_at
     BEFORE UPDATE ON user_books
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
+    DROP TRIGGER IF EXISTS set_user_daily_statistics_updated_at ON user_daily_statistics;
+    CREATE TRIGGER set_user_daily_statistics_updated_at
+    BEFORE UPDATE ON user_daily_statistics
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
   `);
