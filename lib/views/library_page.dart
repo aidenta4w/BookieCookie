@@ -511,12 +511,11 @@ class _LibraryBookCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _StatusChip(label: _statusLabel(book.status)),
-                        const Spacer(),
-                        _RatingStars(rating: book.rating ?? 0),
-                      ],
+                    _RatingStars(rating: book.rating ?? 0),
+                    const SizedBox(height: 10),
+                    _StatusChip(
+                      label: _statusLabel(book.status),
+                      color: _statusColor(book.status),
                     ),
                   ],
                 ),
@@ -587,22 +586,23 @@ class _LibraryBookFallback extends StatelessWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label});
+  const _StatusChip({required this.label, required this.color});
 
   final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: AppColors.primary,
+        style: TextStyle(
+          color: color,
           fontSize: 11,
           fontWeight: FontWeight.w800,
         ),
@@ -620,8 +620,8 @@ class _RatingStars extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(3, (index) {
-        final filled = index < rating.clamp(0, 3);
+      children: List.generate(5, (index) {
+        final filled = index < rating.clamp(0, 5);
         return Padding(
           padding: const EdgeInsets.only(left: 2),
           child: Icon(
@@ -673,6 +673,19 @@ String _statusLabel(String status) {
       return 'Dropped';
     default:
       return 'Planned';
+  }
+}
+
+Color _statusColor(String status) {
+  switch (status) {
+    case 'reading':
+      return const Color(0xFFE0A106);
+    case 'finished':
+      return const Color(0xFF2E9B50);
+    case 'abandoned':
+      return const Color(0xFF8A9099);
+    default:
+      return const Color(0xFF2F80ED);
   }
 }
 
