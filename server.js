@@ -9,6 +9,7 @@ const { initSchema } = require("./src/migrations/initSchema");
 const authRoutes = require("./src/routes/auth.route");
 const homeRoutes = require("./src/routes/home.route");
 const quoteRoutes = require("./src/routes/quote.route");
+const noteRoutes = require("./src/routes/note.route");
 const bookRoutes = require("./src/routes/book.route");
 const userBookRoutes = require("./src/routes/userBook.route");
 
@@ -22,6 +23,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/quotes", quoteRoutes);
+app.use("/api/notes", noteRoutes);
 app.use("/api/user-books", userBookRoutes);
 
 const PORT = process.env.PORT || 5000;

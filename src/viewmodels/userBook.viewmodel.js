@@ -69,7 +69,6 @@ const normalizeManualBookPayload = ({
   author,
   status,
   rating,
-  note,
   start_date,
   finish_date,
 }) => {
@@ -77,7 +76,6 @@ const normalizeManualBookPayload = ({
   const normalizedTitle = `${title ?? ""}`.trim();
   const normalizedAuthor = `${author ?? ""}`.trim();
   const normalizedStatus = `${status ?? "plan_to_read"}`.trim() || "plan_to_read";
-  const normalizedNote = `${note ?? ""}`.trim();
   const parsedRating = parseOptionalNumber(rating);
   const parsedStartDate = parseOptionalDate(start_date, "start date");
   const parsedFinishDate = parseOptionalDate(finish_date, "finish date");
@@ -114,7 +112,6 @@ const normalizeManualBookPayload = ({
     normalizedTitle,
     normalizedAuthor,
     normalizedStatus,
-    normalizedNote,
     parsedRating,
     startDate: parsedStartDate,
     finishDate: parsedFinishDate,
@@ -127,7 +124,6 @@ const createManualBook = async ({
   author,
   status,
   rating,
-  note,
   start_date,
   finish_date,
 }, coverFile) => {
@@ -136,7 +132,6 @@ const createManualBook = async ({
     normalizedTitle,
     normalizedAuthor,
     normalizedStatus,
-    normalizedNote,
     parsedRating,
     startDate,
     finishDate,
@@ -146,7 +141,6 @@ const createManualBook = async ({
     author,
     status,
     rating,
-    note,
     start_date,
     finish_date,
   });
@@ -178,7 +172,6 @@ const createManualBook = async ({
       bookId: book.id,
       status: normalizedStatus,
       rating: parsedRating,
-      note: normalizedNote || null,
       startDate,
       finishDate,
       client,
@@ -252,7 +245,6 @@ const updateManualBook = async (userBookIdParam, payload, coverFile) => {
     normalizedTitle,
     normalizedAuthor,
     normalizedStatus,
-    normalizedNote,
     parsedRating,
     startDate,
     finishDate,
@@ -295,7 +287,6 @@ const updateManualBook = async (userBookIdParam, payload, coverFile) => {
       userBookId: parsedUserBookId,
       status: normalizedStatus,
       rating: parsedRating,
-      note: normalizedNote || null,
       startDate,
       finishDate,
       client,
@@ -358,7 +349,6 @@ const startReadingBook = async (userBookIdParam, userIdParam) => {
       userBookId: parsedUserBookId,
       status: "reading",
       rating: existingDetail.rating,
-      note: existingDetail.note,
       startDate: existingDetail.start_date || new Date().toISOString().split("T")[0],
       finishDate: existingDetail.finish_date,
       client,
@@ -436,7 +426,6 @@ const saveReadingSession = async (userBookIdParam, payload) => {
         userBookId: parsedUserBookId,
         status: "reading",
         rating: existingDetail.rating,
-        note: existingDetail.note,
         startDate:
           existingDetail.start_date || new Date().toISOString().split("T")[0],
         finishDate: existingDetail.finish_date,
@@ -468,47 +457,6 @@ const getReadingSessions = async (userBookIdParam, userIdParam) => {
   });
 };
 
-const saveUserBookNote = async (userBookIdParam, payload) => {
-  const parsedUserBookId = parseRequiredPositiveInteger(
-    userBookIdParam,
-    "user book id"
-  );
-  const parsedUserId = parseRequiredPositiveInteger(payload?.user_id, "user id");
-  const normalizedNote = `${payload?.note ?? ""}`.trim();
-
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    const existingDetail = await userBookModel.getUserBookDetail({
-      userBookId: parsedUserBookId,
-      userId: parsedUserId,
-      client,
-    });
-
-    if (!existingDetail) {
-      throw new Error("Book detail not found");
-    }
-
-    const updatedDetail = await userBookModel.updateUserBookNote({
-      userBookId: parsedUserBookId,
-      userId: parsedUserId,
-      note: normalizedNote || null,
-      client,
-    });
-
-    await client.query("COMMIT");
-
-    return updatedDetail;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-};
-
 module.exports = {
   createManualBook,
   getUserLibrary,
@@ -517,5 +465,4 @@ module.exports = {
   startReadingBook,
   saveReadingSession,
   getReadingSessions,
-  saveUserBookNote,
 };

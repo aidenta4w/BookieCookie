@@ -39,7 +39,6 @@ const initSchema = async () => {
       book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
       status VARCHAR(20) NOT NULL CHECK (status IN ('plan_to_read', 'reading', 'finished', 'abandoned')),
       rating INTEGER CHECK (rating BETWEEN 1 AND 5),
-      note TEXT,
       start_date DATE,
       finish_date DATE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -76,6 +75,16 @@ const initSchema = async () => {
           NULLIF(BTRIM(COALESCE(content, '')), '') IS NOT NULL
           OR NULLIF(BTRIM(COALESCE(image_url, '')), '') IS NOT NULL
         )
+    );
+
+    CREATE TABLE IF NOT EXISTS notes (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_book_id BIGINT NOT NULL REFERENCES user_books(id) ON DELETE CASCADE,
+      content TEXT NOT NULL
+        CHECK (NULLIF(BTRIM(COALESCE(content, '')), '') IS NOT NULL),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS achievements (
@@ -157,6 +166,44 @@ const initSchema = async () => {
     ALTER TABLE user_books
       DROP COLUMN IF EXISTS reading_year;
 
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'user_books'
+          AND column_name = 'note'
+      ) THEN
+        EXECUTE $migrate$
+          INSERT INTO notes (
+            user_id,
+            user_book_id,
+            content,
+            created_at,
+            updated_at
+          )
+          SELECT
+            ub.user_id,
+            ub.id,
+            ub.note,
+            ub.created_at,
+            ub.updated_at
+          FROM user_books ub
+          WHERE NULLIF(BTRIM(COALESCE(ub.note, '')), '') IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1
+              FROM notes n
+              WHERE n.user_book_id = ub.id
+                AND n.user_id = ub.user_id
+                AND n.content = ub.note
+            )
+        $migrate$;
+
+        ALTER TABLE user_books
+          DROP COLUMN IF EXISTS note;
+      END IF;
+    END $$;
+
     ALTER TABLE reading_sessions
       ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
       ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;
@@ -194,6 +241,9 @@ const initSchema = async () => {
     CREATE INDEX IF NOT EXISTS idx_quotes_user_book_id ON quotes(user_book_id);
     CREATE INDEX IF NOT EXISTS idx_quotes_created_at ON quotes(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_quotes_ocr_status ON quotes(ocr_status);
+    CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
+    CREATE INDEX IF NOT EXISTS idx_notes_user_book_id ON notes(user_book_id);
+    CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_achievements_target_type ON achievements(target_type);
     CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement_id ON user_achievements(achievement_id);
@@ -310,6 +360,12 @@ const initSchema = async () => {
     DROP TRIGGER IF EXISTS set_user_daily_statistics_updated_at ON user_daily_statistics;
     CREATE TRIGGER set_user_daily_statistics_updated_at
     BEFORE UPDATE ON user_daily_statistics
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
+    DROP TRIGGER IF EXISTS set_notes_updated_at ON notes;
+    CREATE TRIGGER set_notes_updated_at
+    BEFORE UPDATE ON notes
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
   `);

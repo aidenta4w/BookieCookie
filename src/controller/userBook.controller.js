@@ -132,26 +132,6 @@ const getReadingSessions = async (req, res) => {
   }
 };
 
-const saveUserBookNote = async (req, res) => {
-  try {
-    const data = await userBookViewModel.saveUserBookNote(
-      req.params.userBookId,
-      req.body
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "Note saved",
-      data,
-    });
-  } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
 module.exports = {
   createManualBook,
   getUserLibrary,
@@ -160,5 +140,4 @@ module.exports = {
   startReadingBook,
   saveReadingSession,
   getReadingSessions,
-  saveUserBookNote,
 };

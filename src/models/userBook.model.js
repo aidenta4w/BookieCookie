@@ -8,7 +8,6 @@ const createUserBook = async ({
   bookId,
   status = "plan_to_read",
   rating = null,
-  note = null,
   startDate = null,
   finishDate = null,
   client = pool,
@@ -19,13 +18,12 @@ const createUserBook = async ({
       book_id,
       status,
       rating,
-      note,
       start_date,
       finish_date
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, user_id, book_id, status, rating, note, start_date, finish_date, created_at, updated_at`,
-    [userId, bookId, status, rating, note, startDate, finishDate]
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id, user_id, book_id, status, rating, start_date, finish_date, created_at, updated_at`,
+    [userId, bookId, status, rating, startDate, finishDate]
   );
 
   return result.rows[0];
@@ -38,7 +36,6 @@ const getUserLibrary = async (userId, client = pool) => {
         ub.book_id,
         ub.status,
         ub.rating,
-        ub.note,
         ub.start_date,
         ub.finish_date,
         ub.updated_at,
@@ -63,7 +60,6 @@ const getUserBookDetail = async ({ userBookId, userId, client = pool }) => {
         ub.book_id,
         ub.status,
         ub.rating,
-        ub.note,
         ub.start_date,
         ub.finish_date,
         ub.created_at,
@@ -89,7 +85,6 @@ const updateUserBook = async ({
   userBookId,
   status,
   rating,
-  note,
   startDate,
   finishDate,
   client = pool,
@@ -98,33 +93,14 @@ const updateUserBook = async ({
     `UPDATE user_books
      SET status = $2,
          rating = $3,
-         note = $4,
-         start_date = $5,
-         finish_date = $6
+         start_date = $4,
+         finish_date = $5
      WHERE id = $1
-     RETURNING id, user_id, book_id, status, rating, note, start_date, finish_date, created_at, updated_at`,
-    [userBookId, status, rating, note, startDate, finishDate]
+     RETURNING id, user_id, book_id, status, rating, start_date, finish_date, created_at, updated_at`,
+    [userBookId, status, rating, startDate, finishDate]
   );
 
   return result.rows[0];
-};
-
-const updateUserBookNote = async ({
-  userBookId,
-  userId,
-  note,
-  client = pool,
-}) => {
-  const result = await client.query(
-    `UPDATE user_books
-     SET note = $3
-     WHERE id = $1
-       AND user_id = $2
-     RETURNING id, user_id, book_id, status, rating, note, start_date, finish_date, created_at, updated_at`,
-    [userBookId, userId, note]
-  );
-
-  return result.rows[0] ?? null;
 };
 
 const createReadingSession = async ({
@@ -182,7 +158,6 @@ module.exports = {
   getUserLibrary,
   getUserBookDetail,
   updateUserBook,
-  updateUserBookNote,
   createReadingSession,
   getReadingSessionsByUserBook,
 };
