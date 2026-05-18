@@ -109,6 +109,24 @@ const updateUserBook = async ({
   return result.rows[0];
 };
 
+const updateUserBookNote = async ({
+  userBookId,
+  userId,
+  note,
+  client = pool,
+}) => {
+  const result = await client.query(
+    `UPDATE user_books
+     SET note = $3
+     WHERE id = $1
+       AND user_id = $2
+     RETURNING id, user_id, book_id, status, rating, note, start_date, finish_date, created_at, updated_at`,
+    [userBookId, userId, note]
+  );
+
+  return result.rows[0] ?? null;
+};
+
 const createReadingSession = async ({
   userId,
   userBookId,
@@ -116,16 +134,19 @@ const createReadingSession = async ({
   pagesRead = 0,
   client = pool,
 }) => {
+  const durationMinutes = Math.max(1, Math.ceil(durationSeconds / 60));
+
   const result = await client.query(
     `INSERT INTO reading_sessions (
       user_id,
       user_book_id,
+      duration_minutes,
       duration_seconds,
       pages_read
     )
-    VALUES ($1, $2, $3, $4)
-    RETURNING id, user_id, user_book_id, duration_seconds, pages_read, created_at`,
-    [userId, userBookId, durationSeconds, pagesRead]
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id, user_id, user_book_id, duration_minutes, duration_seconds, pages_read, created_at`,
+    [userId, userBookId, durationMinutes, durationSeconds, pagesRead]
   );
 
   return result.rows[0];
@@ -161,6 +182,7 @@ module.exports = {
   getUserLibrary,
   getUserBookDetail,
   updateUserBook,
+  updateUserBookNote,
   createReadingSession,
   getReadingSessionsByUserBook,
 };

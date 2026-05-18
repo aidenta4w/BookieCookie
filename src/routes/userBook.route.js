@@ -46,6 +46,7 @@ router.get("/:userBookId/reading-sessions", userBookController.getReadingSession
 
 router.post("/:userBookId/start-reading", userBookController.startReadingBook);
 router.post("/:userBookId/reading-sessions", userBookController.saveReadingSession);
+router.post("/:userBookId/note", userBookController.saveUserBookNote);
 
 router.post("/manual/:userBookId/update", (req, res, next) => {
   upload.single("cover")(req, res, (error) => {

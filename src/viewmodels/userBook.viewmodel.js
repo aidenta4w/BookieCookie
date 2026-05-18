@@ -468,6 +468,47 @@ const getReadingSessions = async (userBookIdParam, userIdParam) => {
   });
 };
 
+const saveUserBookNote = async (userBookIdParam, payload) => {
+  const parsedUserBookId = parseRequiredPositiveInteger(
+    userBookIdParam,
+    "user book id"
+  );
+  const parsedUserId = parseRequiredPositiveInteger(payload?.user_id, "user id");
+  const normalizedNote = `${payload?.note ?? ""}`.trim();
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const existingDetail = await userBookModel.getUserBookDetail({
+      userBookId: parsedUserBookId,
+      userId: parsedUserId,
+      client,
+    });
+
+    if (!existingDetail) {
+      throw new Error("Book detail not found");
+    }
+
+    const updatedDetail = await userBookModel.updateUserBookNote({
+      userBookId: parsedUserBookId,
+      userId: parsedUserId,
+      note: normalizedNote || null,
+      client,
+    });
+
+    await client.query("COMMIT");
+
+    return updatedDetail;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   createManualBook,
   getUserLibrary,
@@ -476,4 +517,5 @@ module.exports = {
   startReadingBook,
   saveReadingSession,
   getReadingSessions,
+  saveUserBookNote,
 };

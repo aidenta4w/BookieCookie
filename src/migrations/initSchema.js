@@ -169,6 +169,9 @@ const initSchema = async () => {
     ALTER TABLE reading_sessions
       ALTER COLUMN duration_seconds SET NOT NULL;
 
+    ALTER TABLE reading_sessions
+      ALTER COLUMN duration_minutes DROP NOT NULL;
+
     ALTER TABLE user_daily_statistics
       ADD COLUMN IF NOT EXISTS reading_minutes INTEGER,
       ADD COLUMN IF NOT EXISTS reading_seconds INTEGER NOT NULL DEFAULT 0;
