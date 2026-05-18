@@ -7,6 +7,7 @@ const cors = require("cors");
 const { connectDB } = require("./src/config/db");
 const { initSchema } = require("./src/migrations/initSchema");
 const authRoutes = require("./src/routes/auth.route");
+const achievementRoutes = require("./src/routes/achievement.route");
 const homeRoutes = require("./src/routes/home.route");
 const quoteRoutes = require("./src/routes/quote.route");
 const noteRoutes = require("./src/routes/note.route");
@@ -20,6 +21,7 @@ app.use(express.json());
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
+app.use("/api/achievements", achievementRoutes);
 app.use("/api/home", homeRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/quotes", quoteRoutes);
