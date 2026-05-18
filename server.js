@@ -29,6 +29,8 @@ app.use("/api/notes", noteRoutes);
 app.use("/api/user-books", userBookRoutes);
 
 const PORT = process.env.PORT || 5000;
+const APP_BASE_URL =
+  process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
 const startServer = async () => {
   await connectDB();
@@ -36,7 +38,7 @@ const startServer = async () => {
 
   app.listen(PORT, () => {
     console.log(`Bookie Cookie backend running on port ${PORT}`);
-    console.log(`API docs: http://localhost:${PORT}/api-docs`);
+    console.log(`API docs: ${APP_BASE_URL}/api-docs`);
   });
 };
 
