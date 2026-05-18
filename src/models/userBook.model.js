@@ -112,7 +112,7 @@ const updateUserBook = async ({
 const createReadingSession = async ({
   userId,
   userBookId,
-  durationMinutes,
+  durationSeconds,
   pagesRead = 0,
   client = pool,
 }) => {
@@ -120,12 +120,12 @@ const createReadingSession = async ({
     `INSERT INTO reading_sessions (
       user_id,
       user_book_id,
-      duration_minutes,
+      duration_seconds,
       pages_read
     )
     VALUES ($1, $2, $3, $4)
-    RETURNING id, user_id, user_book_id, duration_minutes, pages_read, created_at`,
-    [userId, userBookId, durationMinutes, pagesRead]
+    RETURNING id, user_id, user_book_id, duration_seconds, pages_read, created_at`,
+    [userId, userBookId, durationSeconds, pagesRead]
   );
 
   return result.rows[0];
@@ -141,7 +141,7 @@ const getReadingSessionsByUserBook = async ({
         id,
         user_id,
         user_book_id,
-        duration_minutes,
+        duration_seconds,
         pages_read,
         created_at
      FROM reading_sessions

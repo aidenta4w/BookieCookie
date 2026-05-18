@@ -64,7 +64,7 @@ const toTimelinePoint = (row, labelBuilder) => {
     label: labelBuilder(date),
     short_label: labelBuilder(date),
     date: row.day_date,
-    minutes: Number(row.minutes ?? 0),
+    seconds: Number(row.seconds ?? 0),
     pages_read: Number(row.pages_read ?? 0),
   };
 };
@@ -118,9 +118,9 @@ const getDashboard = async (userId, requestedYear) => {
 
   const yearlyBookGoal = findLatestGoalValue(goals, "books");
   const monthlyHoursGoal = findLatestGoalValue(goals, "hours", { month });
-  const todayMinutes = Number(todayReading?.minutes ?? 0);
-  const goalMinutes = monthlyHoursGoal > 0
-    ? Math.max(1, Math.round((monthlyHoursGoal * 60) / 30))
+  const todaySeconds = Number(todayReading?.seconds ?? 0);
+  const goalSeconds = monthlyHoursGoal > 0
+    ? Math.max(60, Math.round((monthlyHoursGoal * 3600) / 30))
     : 0;
   const weeklyStats = weeklyReading.map((row) => {
     const date = new Date(row.day_date);
@@ -129,7 +129,7 @@ const getDashboard = async (userId, requestedYear) => {
       label: toWeekdayLabel(date),
       short_label: toWeekdayLabel(date).slice(0, 2),
       date: row.day_date,
-      minutes: Number(row.minutes ?? 0),
+      seconds: Number(row.seconds ?? 0),
       pages_read: Number(row.pages_read ?? 0),
     };
   });
@@ -169,10 +169,10 @@ const getDashboard = async (userId, requestedYear) => {
     finishedInYear: finishedBooks,
     statistics: {
       today: {
-        minutes: todayMinutes,
+        seconds: todaySeconds,
         pages_read: Number(todayReading?.pages_read ?? 0),
-        goal_minutes: goalMinutes,
-        progress: goalMinutes > 0 ? Math.min(todayMinutes / goalMinutes, 1) : 0,
+        goal_seconds: goalSeconds,
+        progress: goalSeconds > 0 ? Math.min(todaySeconds / goalSeconds, 1) : 0,
       },
       week: weeklyStats,
       chart: {
@@ -180,8 +180,9 @@ const getDashboard = async (userId, requestedYear) => {
         month: monthlyStats,
       },
       year: {
-        reading_hours: Math.floor(yearlyReadingMinutes / 60),
-        reading_minutes: yearlyReadingMinutes,
+        reading_hours: Math.floor(yearlyReadingMinutes / 3600),
+        reading_minutes: Math.floor(yearlyReadingMinutes / 60),
+        reading_seconds: yearlyReadingMinutes,
         books_finished: Number(finishedBookCount ?? 0),
         quotes_saved: yearlyQuoteCount,
         current_reading_count: currentReading.length,

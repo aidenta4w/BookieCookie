@@ -64,7 +64,7 @@ const getReadingActivityDates = async (userId) => {
     `SELECT stat_date AS activity_date
      FROM user_daily_statistics
      WHERE user_id = $1
-       AND activity_level > 0
+       AND reading_seconds > 120
      ORDER BY stat_date DESC`,
     [userId]
   );
@@ -80,7 +80,7 @@ const getCurrentDate = async () => {
 const getTodayReadingStats = async (userId) => {
   const result = await pool.query(
     `SELECT
-        COALESCE(reading_minutes, 0)::INT AS minutes,
+        COALESCE(reading_seconds, 0)::INT AS seconds,
         COALESCE(pages_read, 0)::INT AS pages_read
      FROM user_daily_statistics
      WHERE user_id = $1
@@ -88,7 +88,7 @@ const getTodayReadingStats = async (userId) => {
     [userId]
   );
 
-  return result.rows[0] ?? { minutes: 0, pages_read: 0 };
+  return result.rows[0] ?? { seconds: 0, pages_read: 0 };
 };
 
 const getWeeklyReadingStats = async (userId, anchorDate) => {
@@ -102,7 +102,7 @@ const getWeeklyReadingStats = async (userId, anchorDate) => {
      )
      SELECT
        wd.day_date,
-       COALESCE(uds.reading_minutes, 0)::INT AS minutes,
+       COALESCE(uds.reading_seconds, 0)::INT AS seconds,
        COALESCE(uds.pages_read, 0)::INT AS pages_read
      FROM week_days wd
      LEFT JOIN user_daily_statistics uds
@@ -130,7 +130,7 @@ const getMonthlyReadingStats = async (userId, anchorDate) => {
      )
      SELECT
        md.day_date,
-       COALESCE(uds.reading_minutes, 0)::INT AS minutes,
+       COALESCE(uds.reading_seconds, 0)::INT AS seconds,
        COALESCE(uds.pages_read, 0)::INT AS pages_read
      FROM month_days md
      LEFT JOIN user_daily_statistics uds
@@ -158,7 +158,7 @@ const getYearlyQuoteCount = async (userId, year) => {
 
 const getYearlyReadingMinutes = async (userId, year) => {
   const result = await pool.query(
-    `SELECT COALESCE(SUM(reading_minutes), 0)::INT AS total_minutes
+    `SELECT COALESCE(SUM(reading_seconds), 0)::INT AS total_seconds
      FROM user_daily_statistics
      WHERE user_id = $1
        AND stat_date >= MAKE_DATE($2, 1, 1)
@@ -166,7 +166,7 @@ const getYearlyReadingMinutes = async (userId, year) => {
     [userId, year]
   );
 
-  return result.rows[0]?.total_minutes ?? 0;
+  return result.rows[0]?.total_seconds ?? 0;
 };
 
 const getYearlyActivityLevels = async (userId, year) => {
@@ -180,7 +180,7 @@ const getYearlyActivityLevels = async (userId, year) => {
      )
      SELECT
        d.day_date,
-       COALESCE(uds.reading_minutes, 0) AS minutes,
+       COALESCE(uds.reading_seconds, 0) AS seconds,
        COALESCE(uds.quotes_count, 0) AS quotes_count,
        COALESCE(uds.activity_level, 0) AS level
      FROM days d

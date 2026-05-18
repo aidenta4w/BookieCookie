@@ -13,23 +13,23 @@ const toIsoDate = (value) => {
 };
 
 const computeActivityLevel = ({
-  readingMinutes,
+  readingSeconds,
   quotesCount,
   finishedBooksCount,
 }) => {
-  if (readingMinutes >= 120) {
+  if (readingSeconds >= 7200) {
     return 4;
   }
 
-  if (readingMinutes >= 60) {
+  if (readingSeconds >= 3600) {
     return 3;
   }
 
-  if (readingMinutes >= 20) {
+  if (readingSeconds >= 1200) {
     return 2;
   }
 
-  if (readingMinutes > 0 || quotesCount > 0 || finishedBooksCount > 0) {
+  if (readingSeconds > 0 || quotesCount > 0 || finishedBooksCount > 0) {
     return 1;
   }
 
@@ -41,7 +41,7 @@ const rebuildDailyStatistic = async ({ userId, statDate, client = pool }) => {
   const result = await client.query(
     `WITH reading_stats AS (
        SELECT
-         COALESCE(SUM(duration_minutes), 0)::INT AS reading_minutes,
+         COALESCE(SUM(duration_seconds), 0)::INT AS reading_seconds,
          COALESCE(SUM(pages_read), 0)::INT AS pages_read
        FROM reading_sessions
        WHERE user_id = $1
@@ -61,7 +61,7 @@ const rebuildDailyStatistic = async ({ userId, statDate, client = pool }) => {
          AND COALESCE(finish_date, DATE(updated_at)) = $2::DATE
      )
      SELECT
-       reading_stats.reading_minutes,
+       reading_stats.reading_seconds,
        reading_stats.pages_read,
        quote_stats.quotes_count,
        finished_stats.finished_books_count
@@ -70,18 +70,18 @@ const rebuildDailyStatistic = async ({ userId, statDate, client = pool }) => {
   );
 
   const row = result.rows[0] ?? {};
-  const readingMinutes = Number(row.reading_minutes ?? 0);
+  const readingSeconds = Number(row.reading_seconds ?? 0);
   const pagesRead = Number(row.pages_read ?? 0);
   const quotesCount = Number(row.quotes_count ?? 0);
   const finishedBooksCount = Number(row.finished_books_count ?? 0);
   const activityLevel = computeActivityLevel({
-    readingMinutes,
+    readingSeconds,
     quotesCount,
     finishedBooksCount,
   });
 
   if (
-    readingMinutes === 0 &&
+    readingSeconds === 0 &&
     pagesRead === 0 &&
     quotesCount === 0 &&
     finishedBooksCount === 0
@@ -99,7 +99,7 @@ const rebuildDailyStatistic = async ({ userId, statDate, client = pool }) => {
     `INSERT INTO user_daily_statistics (
        user_id,
        stat_date,
-       reading_minutes,
+       reading_seconds,
        pages_read,
        quotes_count,
        finished_books_count,
@@ -107,7 +107,7 @@ const rebuildDailyStatistic = async ({ userId, statDate, client = pool }) => {
      )
      VALUES ($1, $2::DATE, $3, $4, $5, $6, $7)
      ON CONFLICT (user_id, stat_date) DO UPDATE
-     SET reading_minutes = EXCLUDED.reading_minutes,
+     SET reading_seconds = EXCLUDED.reading_seconds,
          pages_read = EXCLUDED.pages_read,
          quotes_count = EXCLUDED.quotes_count,
          finished_books_count = EXCLUDED.finished_books_count,
@@ -117,7 +117,7 @@ const rebuildDailyStatistic = async ({ userId, statDate, client = pool }) => {
     [
       userId,
       normalizedDate,
-      readingMinutes,
+      readingSeconds,
       pagesRead,
       quotesCount,
       finishedBooksCount,

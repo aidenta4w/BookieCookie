@@ -51,7 +51,7 @@ const initSchema = async () => {
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       user_book_id BIGINT NOT NULL REFERENCES user_books(id) ON DELETE CASCADE,
-      duration_minutes INTEGER NOT NULL CHECK (duration_minutes > 0),
+      duration_seconds INTEGER NOT NULL CHECK (duration_seconds > 0),
       pages_read INTEGER NOT NULL DEFAULT 0 CHECK (pages_read >= 0),
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -113,7 +113,7 @@ const initSchema = async () => {
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       stat_date DATE NOT NULL,
-      reading_minutes INTEGER NOT NULL DEFAULT 0 CHECK (reading_minutes >= 0),
+      reading_seconds INTEGER NOT NULL DEFAULT 0 CHECK (reading_seconds >= 0),
       pages_read INTEGER NOT NULL DEFAULT 0 CHECK (pages_read >= 0),
       quotes_count INTEGER NOT NULL DEFAULT 0 CHECK (quotes_count >= 0),
       finished_books_count INTEGER NOT NULL DEFAULT 0 CHECK (finished_books_count >= 0),
@@ -157,6 +157,29 @@ const initSchema = async () => {
     ALTER TABLE user_books
       DROP COLUMN IF EXISTS reading_year;
 
+    ALTER TABLE reading_sessions
+      ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
+      ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;
+
+    UPDATE reading_sessions
+    SET duration_seconds = COALESCE(duration_seconds, duration_minutes * 60)
+    WHERE duration_seconds IS NULL
+      AND duration_minutes IS NOT NULL;
+
+    ALTER TABLE reading_sessions
+      ALTER COLUMN duration_seconds SET NOT NULL;
+
+    ALTER TABLE user_daily_statistics
+      ADD COLUMN IF NOT EXISTS reading_minutes INTEGER,
+      ADD COLUMN IF NOT EXISTS reading_seconds INTEGER NOT NULL DEFAULT 0;
+
+    UPDATE user_daily_statistics
+    SET reading_seconds = CASE
+      WHEN reading_seconds = 0 AND reading_minutes IS NOT NULL
+        THEN reading_minutes * 60
+      ELSE reading_seconds
+    END;
+
     CREATE INDEX IF NOT EXISTS idx_books_category ON books(category);
     CREATE INDEX IF NOT EXISTS idx_user_books_user_id ON user_books(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_books_book_id ON user_books(book_id);
@@ -182,7 +205,7 @@ const initSchema = async () => {
     INSERT INTO user_daily_statistics (
       user_id,
       stat_date,
-      reading_minutes,
+      reading_seconds,
       pages_read,
       quotes_count,
       finished_books_count,
@@ -192,7 +215,7 @@ const initSchema = async () => {
       SELECT
         user_id,
         DATE(created_at) AS stat_date,
-        COALESCE(SUM(duration_minutes), 0)::INT AS reading_minutes,
+        COALESCE(SUM(duration_seconds), 0)::INT AS reading_seconds,
         COALESCE(SUM(pages_read), 0)::INT AS pages_read
       FROM reading_sessions
       GROUP BY user_id, DATE(created_at)
@@ -218,7 +241,7 @@ const initSchema = async () => {
       SELECT
         COALESCE(r.user_id, q.user_id, f.user_id) AS user_id,
         COALESCE(r.stat_date, q.stat_date, f.stat_date) AS stat_date,
-        COALESCE(r.reading_minutes, 0) AS reading_minutes,
+        COALESCE(r.reading_seconds, 0) AS reading_seconds,
         COALESCE(r.pages_read, 0) AS pages_read,
         COALESCE(q.quotes_count, 0) AS quotes_count,
         COALESCE(f.finished_books_count, 0) AS finished_books_count
@@ -233,28 +256,28 @@ const initSchema = async () => {
     SELECT
       user_id,
       stat_date,
-      reading_minutes,
+      reading_seconds,
       pages_read,
       quotes_count,
       finished_books_count,
       CASE
-        WHEN reading_minutes >= 120 THEN 4
-        WHEN reading_minutes >= 60 THEN 3
-        WHEN reading_minutes >= 20 THEN 2
-        WHEN reading_minutes > 0 OR quotes_count > 0 OR finished_books_count > 0 THEN 1
+        WHEN reading_seconds >= 7200 THEN 4
+        WHEN reading_seconds >= 3600 THEN 3
+        WHEN reading_seconds >= 1200 THEN 2
+        WHEN reading_seconds > 0 OR quotes_count > 0 OR finished_books_count > 0 THEN 1
         ELSE 0
       END AS activity_level
     FROM merged
     WHERE user_id IS NOT NULL
       AND stat_date IS NOT NULL
       AND (
-        reading_minutes > 0
+        reading_seconds > 0
         OR pages_read > 0
         OR quotes_count > 0
         OR finished_books_count > 0
       )
     ON CONFLICT (user_id, stat_date) DO UPDATE
-    SET reading_minutes = EXCLUDED.reading_minutes,
+    SET reading_seconds = EXCLUDED.reading_seconds,
         pages_read = EXCLUDED.pages_read,
         quotes_count = EXCLUDED.quotes_count,
         finished_books_count = EXCLUDED.finished_books_count,

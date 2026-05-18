@@ -387,9 +387,12 @@ const saveReadingSession = async (userBookIdParam, payload) => {
     "user book id"
   );
   const parsedUserId = parseRequiredPositiveInteger(payload?.user_id, "user id");
-  const parsedDurationMinutes = parseRequiredPositiveInteger(
-    payload?.duration_minutes,
-    "duration minutes"
+  const rawDurationSeconds =
+    payload?.duration_seconds ??
+    (payload?.duration_minutes == null ? null : Number(payload.duration_minutes) * 60);
+  const parsedDurationSeconds = parseRequiredPositiveInteger(
+    rawDurationSeconds,
+    "duration seconds"
   );
   const parsedPagesRead = payload?.pages_read === undefined || payload?.pages_read === null || payload?.pages_read === ""
     ? 0
@@ -417,7 +420,7 @@ const saveReadingSession = async (userBookIdParam, payload) => {
     const session = await userBookModel.createReadingSession({
       userId: parsedUserId,
       userBookId: parsedUserBookId,
-      durationMinutes: parsedDurationMinutes,
+      durationSeconds: parsedDurationSeconds,
       pagesRead: parsedPagesRead,
       client,
     });
