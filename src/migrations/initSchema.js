@@ -21,29 +21,22 @@ const initSchema = async () => {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE TABLE IF NOT EXISTS books (
-      id BIGSERIAL PRIMARY KEY,
-      title VARCHAR(255) NOT NULL,
-      author VARCHAR(255) NOT NULL,
-      category VARCHAR(100),
-      isbn VARCHAR(32) UNIQUE,
-      published_year INTEGER,
-      description TEXT,
-      cover_image_url TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
     CREATE TABLE IF NOT EXISTS user_books (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+      title VARCHAR(255) NOT NULL,
+      author VARCHAR(255) NOT NULL,
+      category VARCHAR(100),
+      isbn VARCHAR(32),
+      published_year INTEGER,
+      description TEXT,
+      cover_image_url TEXT,
       status VARCHAR(20) NOT NULL CHECK (status IN ('plan_to_read', 'reading', 'finished', 'abandoned')),
       rating INTEGER CHECK (rating BETWEEN 1 AND 5),
       start_date DATE,
       finish_date DATE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT user_books_unique_user_book UNIQUE (user_id, book_id)
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS reading_sessions (
@@ -164,6 +157,61 @@ const initSchema = async () => {
       );
 
     ALTER TABLE user_books
+      ADD COLUMN IF NOT EXISTS title VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS author VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS category VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS isbn VARCHAR(32),
+      ADD COLUMN IF NOT EXISTS published_year INTEGER,
+      ADD COLUMN IF NOT EXISTS description TEXT,
+      ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_name = 'books'
+      ) AND EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'user_books'
+          AND column_name = 'book_id'
+      ) THEN
+        UPDATE user_books ub
+        SET title = COALESCE(ub.title, b.title),
+            author = COALESCE(ub.author, b.author),
+            category = COALESCE(ub.category, b.category),
+            isbn = COALESCE(ub.isbn, b.isbn),
+            published_year = COALESCE(ub.published_year, b.published_year),
+            description = COALESCE(ub.description, b.description),
+            cover_image_url = COALESCE(ub.cover_image_url, b.cover_image_url)
+        FROM books b
+        WHERE ub.book_id = b.id;
+      END IF;
+    END $$;
+
+    UPDATE user_books
+    SET title = COALESCE(NULLIF(BTRIM(title), ''), 'Untitled'),
+        author = COALESCE(NULLIF(BTRIM(author), ''), 'Unknown author');
+
+    ALTER TABLE user_books
+      ALTER COLUMN title SET NOT NULL,
+      ALTER COLUMN author SET NOT NULL;
+
+    ALTER TABLE user_books
+      DROP CONSTRAINT IF EXISTS user_books_unique_user_book;
+
+    ALTER TABLE user_books
+      DROP CONSTRAINT IF EXISTS user_books_book_id_fkey;
+
+    DROP INDEX IF EXISTS idx_user_books_book_id;
+
+    ALTER TABLE user_books
+      DROP COLUMN IF EXISTS book_id;
+
+    DROP TABLE IF EXISTS books;
+
+    ALTER TABLE user_books
       DROP COLUMN IF EXISTS reading_year;
 
     DO $$
@@ -205,35 +253,28 @@ const initSchema = async () => {
     END $$;
 
     ALTER TABLE reading_sessions
-      ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
       ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;
 
     UPDATE reading_sessions
-    SET duration_seconds = COALESCE(duration_seconds, duration_minutes * 60)
-    WHERE duration_seconds IS NULL
-      AND duration_minutes IS NOT NULL;
+    SET duration_seconds = COALESCE(duration_seconds, 0)
+    WHERE duration_seconds IS NULL;
 
     ALTER TABLE reading_sessions
       ALTER COLUMN duration_seconds SET NOT NULL;
 
     ALTER TABLE reading_sessions
-      ALTER COLUMN duration_minutes DROP NOT NULL;
+      DROP COLUMN IF EXISTS duration_minutes;
 
     ALTER TABLE user_daily_statistics
-      ADD COLUMN IF NOT EXISTS reading_minutes INTEGER,
       ADD COLUMN IF NOT EXISTS reading_seconds INTEGER NOT NULL DEFAULT 0;
 
-    UPDATE user_daily_statistics
-    SET reading_seconds = CASE
-      WHEN reading_seconds = 0 AND reading_minutes IS NOT NULL
-        THEN reading_minutes * 60
-      ELSE reading_seconds
-    END;
+    ALTER TABLE user_daily_statistics
+      DROP COLUMN IF EXISTS reading_minutes;
 
-    CREATE INDEX IF NOT EXISTS idx_books_category ON books(category);
     CREATE INDEX IF NOT EXISTS idx_user_books_user_id ON user_books(user_id);
-    CREATE INDEX IF NOT EXISTS idx_user_books_book_id ON user_books(book_id);
     CREATE INDEX IF NOT EXISTS idx_user_books_status ON user_books(status);
+    CREATE INDEX IF NOT EXISTS idx_user_books_category ON user_books(category);
+    CREATE INDEX IF NOT EXISTS idx_user_books_isbn ON user_books(isbn);
     CREATE INDEX IF NOT EXISTS idx_reading_sessions_user_id ON reading_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_reading_sessions_user_book_id ON reading_sessions(user_book_id);
     CREATE INDEX IF NOT EXISTS idx_reading_sessions_created_at ON reading_sessions(created_at DESC);
@@ -339,6 +380,7 @@ const initSchema = async () => {
 
     INSERT INTO achievements (name, description, icon_url, target_type, target_value)
     VALUES
+      ('First Book of the Year', 'Complete your first finished book of the year.', 'auto_stories', 'books_finished', 1),
       ('100 Reading Hours', 'Spend 100 focused hours reading across your library.', 'schedule', 'reading_hours', 100),
       ('10 Books Finished', 'Finish 10 books and build a full year of completed reads.', 'book', 'books_finished', 10),
       ('7-Day Streak', 'Read every day for a full week without breaking the chain.', 'fire', 'streak_days', 7),

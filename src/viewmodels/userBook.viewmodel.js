@@ -1,5 +1,4 @@
 const { pool } = require("../config/db");
-const bookModel = require("../models/book.model");
 const statisticModel = require("../models/statistic.model");
 const userBookModel = require("../models/userBook.model");
 const { uploadBufferToCloudinary } = require("../config/cloudinary");
@@ -10,6 +9,15 @@ const parseOptionalNumber = (value) => {
   }
 
   return Number(value);
+};
+
+const parseOptionalString = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const normalizedValue = `${value}`.trim();
+  return normalizedValue ? normalizedValue : null;
 };
 
 const parseRequiredPositiveInteger = (value, fieldName) => {
@@ -67,6 +75,10 @@ const normalizeManualBookPayload = ({
   user_id,
   title,
   author,
+  category,
+  isbn,
+  published_year,
+  description,
   status,
   rating,
   start_date,
@@ -75,6 +87,10 @@ const normalizeManualBookPayload = ({
   const userId = Number(user_id);
   const normalizedTitle = `${title ?? ""}`.trim();
   const normalizedAuthor = `${author ?? ""}`.trim();
+  const normalizedCategory = parseOptionalString(category);
+  const normalizedIsbn = parseOptionalString(isbn);
+  const normalizedDescription = parseOptionalString(description);
+  const parsedPublishedYear = parseOptionalNumber(published_year);
   const normalizedStatus = `${status ?? "plan_to_read"}`.trim() || "plan_to_read";
   const parsedRating = parseOptionalNumber(rating);
   const parsedStartDate = parseOptionalDate(start_date, "start date");
@@ -100,6 +116,13 @@ const normalizeManualBookPayload = ({
   }
 
   if (
+    parsedPublishedYear !== null &&
+    (!Number.isInteger(parsedPublishedYear) || parsedPublishedYear <= 0)
+  ) {
+    throw new Error("Published year must be a positive integer");
+  }
+
+  if (
     parsedStartDate !== null &&
     parsedFinishDate !== null &&
     new Date(parsedFinishDate) <= new Date(parsedStartDate)
@@ -111,6 +134,10 @@ const normalizeManualBookPayload = ({
     userId,
     normalizedTitle,
     normalizedAuthor,
+    normalizedCategory,
+    normalizedIsbn,
+    normalizedDescription,
+    publishedYear: parsedPublishedYear,
     normalizedStatus,
     parsedRating,
     startDate: parsedStartDate,
@@ -118,32 +145,32 @@ const normalizeManualBookPayload = ({
   };
 };
 
-const createManualBook = async ({
-  user_id,
-  title,
-  author,
-  status,
-  rating,
-  start_date,
-  finish_date,
-}, coverFile) => {
+const toBookPayload = (userBook) => ({
+  id: userBook.id,
+  title: userBook.title,
+  author: userBook.author,
+  category: userBook.category,
+  isbn: userBook.isbn,
+  published_year: userBook.published_year,
+  description: userBook.description,
+  cover_image_url: userBook.cover_image_url,
+  created_at: userBook.created_at,
+});
+
+const createManualBook = async (payload, coverFile) => {
   const {
     userId,
     normalizedTitle,
     normalizedAuthor,
+    normalizedCategory,
+    normalizedIsbn,
+    normalizedDescription,
+    publishedYear,
     normalizedStatus,
     parsedRating,
     startDate,
     finishDate,
-  } = normalizeManualBookPayload({
-    user_id,
-    title,
-    author,
-    status,
-    rating,
-    start_date,
-    finish_date,
-  });
+  } = normalizeManualBookPayload(payload);
 
   const client = await pool.connect();
 
@@ -160,16 +187,15 @@ const createManualBook = async ({
       coverImageUrl = uploadResult.secure_url;
     }
 
-    const book = await bookModel.createBook({
-      title: normalizedTitle,
-      author: normalizedAuthor || "Unknown author",
-      coverImageUrl,
-      client,
-    });
-
     const userBook = await userBookModel.createUserBook({
       userId,
-      bookId: book.id,
+      title: normalizedTitle,
+      author: normalizedAuthor || "Unknown author",
+      category: normalizedCategory,
+      isbn: normalizedIsbn,
+      publishedYear,
+      description: normalizedDescription,
+      coverImageUrl,
       status: normalizedStatus,
       rating: parsedRating,
       startDate,
@@ -188,7 +214,7 @@ const createManualBook = async ({
     await client.query("COMMIT");
 
     return {
-      book,
+      book: toBookPayload(userBook),
       user_book: userBook,
     };
   } catch (error) {
@@ -244,6 +270,10 @@ const updateManualBook = async (userBookIdParam, payload, coverFile) => {
     userId,
     normalizedTitle,
     normalizedAuthor,
+    normalizedCategory,
+    normalizedIsbn,
+    normalizedDescription,
+    publishedYear,
     normalizedStatus,
     parsedRating,
     startDate,
@@ -275,16 +305,27 @@ const updateManualBook = async (userBookIdParam, payload, coverFile) => {
       coverImageUrl = uploadResult.secure_url;
     }
 
-    await bookModel.updateBook({
-      bookId: existingDetail.book_id,
-      title: normalizedTitle,
-      author: normalizedAuthor || "Unknown author",
-      coverImageUrl,
-      client,
-    });
-
     const updatedBook = await userBookModel.updateUserBook({
       userBookId: parsedUserBookId,
+      title: normalizedTitle,
+      author: normalizedAuthor || "Unknown author",
+      category:
+        payload?.category === undefined
+          ? existingDetail.category
+          : normalizedCategory,
+      isbn:
+        payload?.isbn === undefined
+          ? existingDetail.isbn
+          : normalizedIsbn,
+      publishedYear:
+        payload?.published_year === undefined
+          ? existingDetail.published_year
+          : publishedYear,
+      description:
+        payload?.description === undefined
+          ? existingDetail.description
+          : normalizedDescription,
+      coverImageUrl,
       status: normalizedStatus,
       rating: parsedRating,
       startDate,
@@ -347,6 +388,13 @@ const startReadingBook = async (userBookIdParam, userIdParam) => {
 
     await userBookModel.updateUserBook({
       userBookId: parsedUserBookId,
+      title: existingDetail.title,
+      author: existingDetail.author,
+      category: existingDetail.category,
+      isbn: existingDetail.isbn,
+      publishedYear: existingDetail.published_year,
+      description: existingDetail.description,
+      coverImageUrl: existingDetail.cover_image_url,
       status: "reading",
       rating: existingDetail.rating,
       startDate: existingDetail.start_date || new Date().toISOString().split("T")[0],
@@ -424,6 +472,13 @@ const saveReadingSession = async (userBookIdParam, payload) => {
     if (existingDetail.status !== "reading") {
       await userBookModel.updateUserBook({
         userBookId: parsedUserBookId,
+        title: existingDetail.title,
+        author: existingDetail.author,
+        category: existingDetail.category,
+        isbn: existingDetail.isbn,
+        publishedYear: existingDetail.published_year,
+        description: existingDetail.description,
+        coverImageUrl: existingDetail.cover_image_url,
         status: "reading",
         rating: existingDetail.rating,
         startDate:
@@ -457,6 +512,58 @@ const getReadingSessions = async (userBookIdParam, userIdParam) => {
   });
 };
 
+const deleteUserBook = async (userBookIdParam, userIdParam) => {
+  const parsedUserBookId = parseRequiredPositiveInteger(
+    userBookIdParam,
+    "user book id"
+  );
+  const parsedUserId = parseRequiredPositiveInteger(userIdParam, "user id");
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const existingDetail = await userBookModel.getUserBookDetail({
+      userBookId: parsedUserBookId,
+      userId: parsedUserId,
+      client,
+    });
+
+    if (!existingDetail) {
+      throw new Error("Book detail not found");
+    }
+
+    const deletedBook = await userBookModel.deleteUserBook({
+      userBookId: parsedUserBookId,
+      userId: parsedUserId,
+      client,
+    });
+
+    if (!deletedBook) {
+      throw new Error("Book detail not found");
+    }
+
+    await rebuildStatisticDates({
+      userId: parsedUserId,
+      dates: [
+        resolveFinishedStatDate(existingDetail),
+        toDateKey(new Date()),
+      ],
+      client,
+    });
+
+    await client.query("COMMIT");
+
+    return deletedBook;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   createManualBook,
   getUserLibrary,
@@ -465,4 +572,5 @@ module.exports = {
   startReadingBook,
   saveReadingSession,
   getReadingSessions,
+  deleteUserBook,
 };

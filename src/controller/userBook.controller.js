@@ -132,6 +132,26 @@ const getReadingSessions = async (req, res) => {
   }
 };
 
+const deleteUserBook = async (req, res) => {
+  try {
+    const data = await userBookViewModel.deleteUserBook(
+      req.params.userBookId,
+      req.query.userId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Book deleted successfully",
+      data,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createManualBook,
   getUserLibrary,
@@ -140,4 +160,5 @@ module.exports = {
   startReadingBook,
   saveReadingSession,
   getReadingSessions,
+  deleteUserBook,
 };

@@ -4,14 +4,13 @@ const getCurrentReadingBooks = async (userId) => {
   const result = await pool.query(
     `SELECT
         ub.id,
-        b.id AS book_id,
-        b.title,
-        b.author,
-        b.cover_image_url,
+        ub.id AS book_id,
+        ub.title,
+        ub.author,
+        ub.cover_image_url,
         ub.start_date,
         ub.updated_at
      FROM user_books ub
-     INNER JOIN books b ON b.id = ub.book_id
      WHERE ub.user_id = $1
        AND ub.status = 'reading'
      ORDER BY ub.updated_at DESC
@@ -26,15 +25,14 @@ const getFinishedBooksInYear = async (userId, year) => {
   const result = await pool.query(
     `SELECT
         ub.id,
-        b.id AS book_id,
-        b.title,
-        b.author,
-        b.cover_image_url,
+        ub.id AS book_id,
+        ub.title,
+        ub.author,
+        ub.cover_image_url,
         ub.finish_date,
         ub.updated_at,
         ub.rating
      FROM user_books ub
-     INNER JOIN books b ON b.id = ub.book_id
      WHERE ub.user_id = $1
        AND ub.status = 'finished'
        AND COALESCE(EXTRACT(YEAR FROM ub.finish_date)::INT, EXTRACT(YEAR FROM ub.updated_at)::INT) = $2

@@ -20,7 +20,7 @@ const getAchievements = async (client = pool) => {
 const getYearlyReadingSeconds = async (userId, year, client = pool) => {
   const result = await client.query(
     `SELECT COALESCE(
-        SUM(COALESCE(duration_seconds, duration_minutes * 60, 0)),
+        SUM(duration_seconds),
         0
       )::BIGINT AS total_seconds
      FROM reading_sessions
@@ -68,7 +68,7 @@ const getActivityDates = async (userId, client = pool) => {
        SELECT DATE(created_at) AS activity_date
        FROM reading_sessions
        WHERE user_id = $1
-         AND COALESCE(duration_seconds, duration_minutes * 60, 0) > 120
+         AND duration_seconds > 120
        UNION
        SELECT DATE(created_at) AS activity_date
        FROM quotes

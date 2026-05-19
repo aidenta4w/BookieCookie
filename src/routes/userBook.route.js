@@ -43,6 +43,7 @@ const upload = multer({
 
 router.get("/detail/:userBookId", userBookController.getUserBookDetail);
 router.get("/:userBookId/reading-sessions", userBookController.getReadingSessions);
+router.delete("/:userBookId", userBookController.deleteUserBook);
 
 router.post("/:userBookId/start-reading", userBookController.startReadingBook);
 router.post("/:userBookId/reading-sessions", userBookController.saveReadingSession);

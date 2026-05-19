@@ -29,12 +29,11 @@ const getNotesByUserId = async (userId, client = pool) => {
         n.content,
         n.created_at,
         n.updated_at,
-        b.title,
-        b.author,
-        b.cover_image_url
+        ub.title,
+        ub.author,
+        ub.cover_image_url
      FROM notes n
      INNER JOIN user_books ub ON ub.id = n.user_book_id
-     INNER JOIN books b ON b.id = ub.book_id
      WHERE n.user_id = $1
      ORDER BY n.updated_at DESC, n.id DESC`,
     [userId]

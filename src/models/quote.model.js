@@ -73,12 +73,11 @@ const getQuotesByUserId = async (userId, client = pool) => {
         q.ocr_confidence,
         q.ocr_processed_at,
         q.created_at,
-        b.title,
-        b.author,
-        b.cover_image_url
+        ub.title,
+        ub.author,
+        ub.cover_image_url
      FROM quotes q
      INNER JOIN user_books ub ON ub.id = q.user_book_id
-     INNER JOIN books b ON b.id = ub.book_id
      WHERE q.user_id = $1
      ORDER BY q.created_at DESC, q.id DESC`,
     [userId]
