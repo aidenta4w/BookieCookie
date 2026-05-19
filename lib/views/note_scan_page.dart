@@ -74,7 +74,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
 
       setState(() {
         _isLoadingCamera = false;
-        _errorMessage = 'Không thể mở camera lúc này.';
+        _errorMessage = 'Unable to open the camera right now.';
         _cameraErrorMessage = error.toString();
       });
     }
@@ -103,7 +103,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
 
       setState(() {
         _isProcessing = false;
-        _errorMessage = 'Không thể chụp ảnh lúc này.';
+        _errorMessage = 'Unable to take a photo right now.';
       });
     }
   }
@@ -136,7 +136,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
 
       setState(() {
         _isProcessing = false;
-        _errorMessage = 'Không thể chọn ảnh từ thư viện.';
+        _errorMessage = 'Unable to pick an image from the gallery.';
       });
     }
   }
@@ -169,7 +169,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
 
       setState(() {
         _isProcessing = false;
-        _errorMessage = 'Không thể mở camera hệ thống.';
+        _errorMessage = 'Unable to open the system camera.';
       });
     }
   }
@@ -190,7 +190,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
       if (normalizedText.isEmpty) {
         setState(() {
           _isProcessing = false;
-          _errorMessage = 'Không nhận diện được chữ từ ảnh này.';
+          _errorMessage = 'Could not recognize any text from this image.';
         });
         return;
       }
@@ -203,7 +203,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
 
       setState(() {
         _isProcessing = false;
-        _errorMessage = 'OCR thất bại. Hãy thử lại với ảnh khác.';
+        _errorMessage = 'OCR failed. Please try again with another image.';
       });
     }
   }
@@ -301,7 +301,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
                         CircularProgressIndicator(color: AppColors.primary),
                         SizedBox(height: 16),
                         Text(
-                          'Đang OCR ảnh...',
+                          'Running OCR on image...',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -335,7 +335,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Không mở được camera preview trong app.',
+              'Unable to open the in-app camera preview.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -347,7 +347,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
             const SizedBox(height: 10),
             Text(
               _cameraErrorMessage ??
-                  'Thiết bị này vẫn có thể dùng camera hệ thống hoặc chọn ảnh từ thư viện.',
+                  'This device can still use the system camera or pick an image from the gallery.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.78),
@@ -362,7 +362,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
               child: ElevatedButton.icon(
                 onPressed: _pickFromSystemCamera,
                 icon: const Icon(Icons.camera_alt_rounded),
-                label: const Text('Chụp bằng camera hệ thống'),
+                label: const Text('Take photo with system camera'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -380,7 +380,7 @@ class _NoteScanPageState extends State<NoteScanPage> {
               child: OutlinedButton.icon(
                 onPressed: _pickFromGallery,
                 icon: const Icon(Icons.photo_library_rounded),
-                label: const Text('Chọn từ thư viện'),
+                label: const Text('Choose from gallery'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),

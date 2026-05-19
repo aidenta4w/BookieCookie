@@ -115,7 +115,7 @@ class AccountPage extends StatelessWidget {
                           if (accountVM.errorMessage != null) ...[
                             const SizedBox(height: 20),
                             _InfoCard(
-                              title: 'Thông báo',
+                              title: 'Notifications',
                               children: [
                                 Text(
                                   accountVM.errorMessage!,
@@ -151,7 +151,7 @@ class AccountPage extends StatelessWidget {
                                 }
                               },
                               icon: const Icon(Icons.edit_outlined),
-                              label: const Text('Chỉnh sửa hồ sơ'),
+                              label: const Text('Edit profile'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.accent,
                                 padding: const EdgeInsets.symmetric(

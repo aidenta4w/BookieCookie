@@ -91,7 +91,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
       }
 
       setState(() {
-        _errorMessage = 'Không thể nhận diện chữ từ ảnh đã chọn.';
+        _errorMessage = 'Could not recognize text from the selected image.';
       });
     } finally {
       if (mounted) {
@@ -128,7 +128,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
   Future<void> _saveQuote() async {
     if (_selectedImage == null) {
       setState(() {
-        _errorMessage = 'Hãy chọn ảnh quote trước khi lưu.';
+        _errorMessage = 'Please choose a quote image before saving.';
       });
       return;
     }
@@ -136,7 +136,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
     final content = _contentController.text.trim();
     if (content.isEmpty) {
       setState(() {
-        _errorMessage = 'OCR chưa có nội dung. Hãy chỉnh lại text trước khi lưu.';
+        _errorMessage = 'OCR has no content yet. Please edit the text before saving.';
       });
       return;
     }
@@ -172,7 +172,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
 
       if (result['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Quote đã được lưu.')),
+          const SnackBar(content: Text('Quote saved.')),
         );
         Navigator.pop(context, true);
         return;
@@ -180,7 +180,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
 
       setState(() {
         _errorMessage =
-            result['message'] as String? ?? 'Không thể lưu quote lúc này.';
+            result['message'] as String? ?? 'Unable to save the quote right now.';
       });
     } catch (error) {
       if (!mounted) {
@@ -239,7 +239,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Chọn ảnh quote, để Google ML Kit nhận diện chữ, rồi chỉnh lại trước khi lưu.',
+                'Choose a quote image, let Google ML Kit recognize the text, then edit it before saving.',
                 style: TextStyle(
                   color: AppColors.darkBrown.withValues(alpha: 0.76),
                   fontWeight: FontWeight.w600,
@@ -268,8 +268,8 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
                         icon: const Icon(Icons.photo_library_rounded),
                         label: Text(
                           _selectedImage == null
-                              ? 'Chọn ảnh quote'
-                              : 'Chọn ảnh khác',
+                              ? 'Choose quote image'
+                              : 'Choose another image',
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
@@ -315,7 +315,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Google ML Kit đang nhận diện chữ trong ảnh...',
+                              'Google ML Kit is recognizing text in the image...',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
@@ -337,12 +337,12 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
               ),
               const SizedBox(height: 18),
               _CardSection(
-                title: 'Nội dung quote',
+                title: 'Quote content',
                 child: TextField(
                   controller: _contentController,
                   maxLines: 8,
                   decoration: const InputDecoration(
-                    hintText: 'Text OCR sẽ xuất hiện ở đây để bạn chỉnh lại...',
+                    hintText: 'OCR text will appear here for you to edit...',
                     border: InputBorder.none,
                   ),
                   style: TextStyle(
@@ -354,14 +354,14 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
               ),
               const SizedBox(height: 18),
               _CardSection(
-                title: 'Thông tin thêm',
+                title: 'Additional information',
                 child: Column(
                   children: [
                     TextField(
                       controller: _pageController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        hintText: 'Trang số mấy?',
+                        hintText: 'What page is it on?',
                         border: InputBorder.none,
                       ),
                     ),
@@ -373,7 +373,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
                       controller: _noteController,
                       maxLines: 4,
                       decoration: const InputDecoration(
-                        hintText: 'Ghi chú của bạn về quote này...',
+                        hintText: 'Your note about this quote...',
                         border: InputBorder.none,
                       ),
                     ),
@@ -404,7 +404,7 @@ class _QuoteScanPageState extends State<QuoteScanPage> {
                     ),
                   ),
                   child: Text(
-                    _isSaving ? 'Đang lưu...' : 'Lưu quote',
+                    _isSaving ? 'Saving...' : 'Save quote',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,

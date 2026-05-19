@@ -377,7 +377,7 @@ class _ReadingPageState extends State<ReadingPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã thêm nội dung OCR vào quote.')),
+        const SnackBar(content: Text('OCR content added to the quote.')),
       );
     } finally {
       if (mounted) {
@@ -445,7 +445,7 @@ class _ReadingPageState extends State<ReadingPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không lưu được phiên đọc lên server.')),
+        const SnackBar(content: Text('Could not save the reading session to the server.')),
       );
       return false;
     } finally {
@@ -508,7 +508,7 @@ class _ReadingPageState extends State<ReadingPage> {
         }
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Đã lưu note.')));
+        ).showSnackBar(const SnackBar(content: Text('Note saved.')));
       }
     } catch (_) {
       if (!mounted) {
@@ -517,7 +517,7 @@ class _ReadingPageState extends State<ReadingPage> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Không lưu được note.')));
+      ).showSnackBar(const SnackBar(content: Text('Could not save note.')));
     } finally {
       if (mounted) {
         setState(() {
@@ -576,7 +576,7 @@ class _ReadingPageState extends State<ReadingPage> {
         }
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Đã lưu quote.')));
+        ).showSnackBar(const SnackBar(content: Text('Quote saved.')));
       }
     } catch (_) {
       if (!mounted) {
@@ -585,7 +585,7 @@ class _ReadingPageState extends State<ReadingPage> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Không lưu được quote.')));
+      ).showSnackBar(const SnackBar(content: Text('Could not save quote.')));
     } finally {
       if (mounted) {
         setState(() {
@@ -818,7 +818,7 @@ class _ReadingPageState extends State<ReadingPage> {
                 ),
                 const SizedBox(height: 24),
                 _InfoCard(
-                  title: 'Thời gian đọc',
+                  title: 'Reading time',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -830,7 +830,7 @@ class _ReadingPageState extends State<ReadingPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Hôm nay',
+                                  'Today',
                                   style: TextStyle(
                                     color: AppColors.darkBrown.withValues(
                                       alpha: 0.74,
@@ -842,7 +842,7 @@ class _ReadingPageState extends State<ReadingPage> {
                                 const SizedBox(height: 6),
                                 Text(
                                   _isLoadingSessions
-                                      ? 'Đang tải...'
+                                      ? 'Loading...'
                                       : _formatDuration(_todayReadingSeconds),
                                   style: const TextStyle(
                                     color: AppColors.darkBlue,
@@ -866,7 +866,7 @@ class _ReadingPageState extends State<ReadingPage> {
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: const Text(
-                                'Đang đọc',
+                                'Currently reading',
                                 style: TextStyle(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w700,
@@ -882,7 +882,7 @@ class _ReadingPageState extends State<ReadingPage> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Tổng của cuốn sách',
+                        'Book total',
                         style: TextStyle(
                           color: AppColors.darkBrown.withValues(alpha: 0.74),
                           fontSize: 13,
@@ -892,7 +892,7 @@ class _ReadingPageState extends State<ReadingPage> {
                       const SizedBox(height: 6),
                       Text(
                         _isLoadingSessions
-                            ? 'Đang tải...'
+                            ? 'Loading...'
                             : _formatDuration(_totalReadingSeconds),
                         style: const TextStyle(
                           color: AppColors.darkBlue,
@@ -908,7 +908,7 @@ class _ReadingPageState extends State<ReadingPage> {
                   title: 'Quote',
                   accentColor: const Color(0xFF2196F3),
                   icon: Icons.format_quote_rounded,
-                  actionLabel: _isSavingQuote ? 'Đang lưu...' : 'Save',
+                  actionLabel: _isSavingQuote ? 'Saving...' : 'Save',
                   actionEnabled:
                       !_isSavingQuote && !_isScanningNote && _hasUnsavedQuote,
                   onActionTap: _saveQuote,
@@ -921,11 +921,11 @@ class _ReadingPageState extends State<ReadingPage> {
                           });
                         }
                       : null,
-                  emptyEntriesText: 'Chưa có quote nào được lưu.',
+                  emptyEntriesText: 'No quotes saved yet.',
                   headerAction: Tooltip(
                     message: _isScanningNote
-                        ? 'Đang quét ảnh...'
-                        : 'OCR từ ảnh',
+                        ? 'Scanning image...'
+                        : 'OCR from image',
                     child: _CardActionButton(
                       icon: _isScanningNote
                           ? Icons.hourglass_top_rounded
@@ -938,7 +938,7 @@ class _ReadingPageState extends State<ReadingPage> {
                     minLines: 1,
                     maxLines: 4,
                     decoration: const InputDecoration(
-                      hintText: 'OCR hoặc nhập tay quote của bạn...',
+                      hintText: 'OCR or type your quote manually...',
                       border: InputBorder.none,
                     ),
                     style: TextStyle(
@@ -954,7 +954,7 @@ class _ReadingPageState extends State<ReadingPage> {
                   title: 'Note',
                   accentColor: const Color(0xFFFFC107),
                   icon: Icons.edit_note_rounded,
-                  actionLabel: _isSavingNote ? 'Đang lưu...' : 'Save',
+                  actionLabel: _isSavingNote ? 'Saving...' : 'Save',
                   actionEnabled: !_isSavingNote && _hasUnsavedNote,
                   onActionTap: _saveNote,
                   entries: _savedNotes.map((item) => item.content).toList(),
@@ -966,13 +966,13 @@ class _ReadingPageState extends State<ReadingPage> {
                           });
                         }
                       : null,
-                  emptyEntriesText: 'Chưa có note nào được lưu.',
+                  emptyEntriesText: 'No notes saved yet.',
                   child: TextField(
                     controller: _noteController,
                     minLines: 1,
                     maxLines: 4,
                     decoration: const InputDecoration(
-                      hintText: 'Viết note cho cuốn sách này...',
+                      hintText: 'Write a note for this book...',
                       border: InputBorder.none,
                     ),
                     style: TextStyle(
@@ -1448,7 +1448,7 @@ class _ReadingEntryCard extends StatelessWidget {
                         : Icons.keyboard_arrow_down_rounded,
                     color: AppColors.accent,
                   ),
-                  tooltip: entriesExpanded ? 'Ẩn bớt' : 'Hiển thị thêm',
+                  tooltip: entriesExpanded ? 'Show less' : 'Show more',
                 ),
               _SaveButton(
                 label: actionLabel,
@@ -1506,7 +1506,7 @@ class _ReadingEntryCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   Center(
                     child: Text(
-                      'Hiển thị ${entries.length - _previewLimit} mục nữa',
+                      'Show ${entries.length - _previewLimit} more',
                       style: TextStyle(
                         color: AppColors.accent.withValues(alpha: 0.84),
                         fontWeight: FontWeight.w700,
@@ -1705,12 +1705,10 @@ class _ReadingSession {
   final DateTime createdAt;
 
   factory _ReadingSession.fromJson(Map<String, dynamic> json) {
-    final parsedDurationSeconds = json['duration_seconds'] is num
-        ? (json['duration_seconds'] as num).toInt()
-        : ((json['duration_minutes'] as num?)?.toInt() ?? 0) * 60;
-
     return _ReadingSession(
-      durationSeconds: parsedDurationSeconds,
+      durationSeconds: json['duration_seconds'] is num
+          ? (json['duration_seconds'] as num).toInt()
+          : 0,
       createdAt:
           DateTime.tryParse('${json['created_at'] ?? ''}') ?? DateTime.now(),
     );
@@ -1733,19 +1731,19 @@ String _formatDuration(int totalSeconds) {
 
   if (hours > 0) {
     if (minutes == 0 && seconds == 0) {
-      return '$hours giờ 00 phút 00 giây';
+      return '$hours h 00 m 00 s';
     }
 
-    return '$hours giờ $minutes phút ${seconds.toString().padLeft(2, '0')} giây';
+    return '$hours h $minutes m ${seconds.toString().padLeft(2, '0')} s';
   }
 
   if (minutes > 0) {
-    return '$minutes phút ${seconds.toString().padLeft(2, '0')} giây';
+    return '$minutes m ${seconds.toString().padLeft(2, '0')} s';
   }
 
   if (seconds > 0) {
-    return '$seconds giây';
+    return '$seconds s';
   }
 
-  return '0 giây';
+  return '0 s';
 }

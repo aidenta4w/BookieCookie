@@ -55,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ email và mật khẩu.'),
+          content: Text('Please enter both email and password.'),
         ),
       );
       return;
@@ -64,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Email chưa đúng định dạng.'),
+          content: Text('The email format is invalid.'),
         ),
       );
       return;

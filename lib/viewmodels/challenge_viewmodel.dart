@@ -225,6 +225,15 @@ class ChallengeViewModel extends ChangeNotifier {
   List<AchievementModel> _buildFallbackAchievements(AchievementStats stats) {
     final seeded = <AchievementModel>[
       AchievementModel(
+        id: 5,
+        name: 'First Book of the Year',
+        description: 'Complete your first finished book of the year.',
+        iconUrl: 'auto_stories',
+        targetType: 'books_finished',
+        targetValue: 1,
+        createdAt: DateTime.now(),
+      ),
+      AchievementModel(
         id: 1,
         name: '100 Reading Hours',
         description: 'Spend 100 focused hours reading across your library.',

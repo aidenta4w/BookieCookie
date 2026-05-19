@@ -24,6 +24,7 @@ class BookDetailViewModel extends ChangeNotifier {
   List<BookQuoteModel> quotes = const [];
   bool isLoading = false;
   bool isStartingReading = false;
+  bool isDeleting = false;
   String? errorMessage;
 
   Future<void> loadDetail() async {
@@ -161,6 +162,35 @@ class BookDetailViewModel extends ChangeNotifier {
       // Surface a simple failure state to the caller.
     }
 
+    return false;
+  }
+
+  Future<bool> deleteBook() async {
+    if (isDeleting) return false;
+
+    isDeleting = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _apiService.delete(
+        '/user-books/$userBookId?userId=${user.id}',
+        headers: token == null ? null : {'Authorization': 'Bearer $token'},
+      );
+
+      if (result['success'] == true) {
+        isDeleting = false;
+        notifyListeners();
+        return true;
+      }
+
+      errorMessage = result['message'] as String? ?? 'Could not delete book';
+    } catch (_) {
+      errorMessage = 'Could not delete book';
+    }
+
+    isDeleting = false;
+    notifyListeners();
     return false;
   }
 }

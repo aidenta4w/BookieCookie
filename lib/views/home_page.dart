@@ -361,7 +361,7 @@ class _CurrentReadingSection extends StatelessWidget {
     }
 
     final List<CurrentReadingBook?> displayBooks = books.isEmpty
-        ? [null, null]
+        ? [null]
         : books.take(6).toList();
 
     return SizedBox(

@@ -178,14 +178,11 @@ class YearStatistics {
 
   factory YearStatistics.fromJson(Map<String, dynamic> json) {
     final activityJson = json['yearly_activity_levels'] as List<dynamic>? ?? [];
-    final parsedReadingSeconds = json.containsKey('reading_seconds')
-        ? _toInt(json['reading_seconds'])
-        : _toInt(json['reading_minutes']) * 60;
 
     return YearStatistics(
       readingHours: _toInt(json['reading_hours']),
       readingMinutes: _toInt(json['reading_minutes']),
-      readingSeconds: parsedReadingSeconds,
+      readingSeconds: _toInt(json['reading_seconds']),
       booksFinished: _toInt(json['books_finished']),
       quotesSaved: _toInt(json['quotes_saved']),
       currentReadingCount: _toInt(json['current_reading_count']),
@@ -321,7 +318,12 @@ DateTime? _toDateTime(dynamic value) {
     return null;
   }
 
-  return DateTime.tryParse(value.toString());
+  final parsed = DateTime.tryParse(value.toString());
+  if (parsed == null) {
+    return null;
+  }
+
+  return parsed.isUtc ? parsed.toLocal() : parsed;
 }
 
 class FinishedBook {

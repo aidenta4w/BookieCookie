@@ -4,14 +4,39 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message);
+  const ApiException(
+    this.message, {
+    this.url,
+    this.statusCode,
+    this.responseBody,
+  });
 
   final String message;
+  final String? url;
+  final int? statusCode;
+  final String? responseBody;
 
   @override
-  String toString() => message;
+  String toString() {
+    final parts = <String>[message];
+
+    if (url != null) {
+      parts.add('url=$url');
+    }
+
+    if (statusCode != null) {
+      parts.add('statusCode=$statusCode');
+    }
+
+    if (responseBody != null && responseBody!.isNotEmpty) {
+      parts.add('responseBody=$responseBody');
+    }
+
+    return parts.join(' | ');
+  }
 }
 
 class ApiService {
@@ -23,6 +48,12 @@ class ApiService {
   static const Duration _timeout = Duration(seconds: 12);
 
   static String get baseUrl => _normalizeBaseUrl(_configuredBaseUrl);
+
+  static void _debugLog(String message) {
+    if (kDebugMode) {
+      debugPrint('[ApiService] $message');
+    }
+  }
 
   static String _normalizeBaseUrl(String url) {
     final trimmed = url.trim();
@@ -39,27 +70,34 @@ class ApiService {
     String endpoint, {
     Map<String, String>? headers,
   }) async {
+    final url = '$baseUrl$endpoint';
+    _debugLog('GET $url');
+
     try {
       final response = await http
-          .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
+          .get(Uri.parse(url), headers: headers)
           .timeout(_timeout);
 
-      return _parseResponse(response);
+      return _parseResponse(response, url: url);
     } on TimeoutException {
-      throw const ApiException(
-        'Server phản hồi quá lâu. Hãy kiểm tra backend đang chạy và thử lại.',
+      throw ApiException(
+        'The server took too long to respond. Please make sure the backend is running and try again.',
+        url: url,
       );
     } on SocketException {
-      throw const ApiException(
-        'Không kết nối được tới server. Hãy kiểm tra API_BASE_URL hoặc backend đang chạy.',
+      throw ApiException(
+        'Could not connect to the server. Please check API_BASE_URL or make sure the backend is running.',
+        url: url,
       );
     } on http.ClientException {
-      throw const ApiException(
-        'Kết nối mạng tới server thất bại. Hãy thử lại sau.',
+      throw ApiException(
+        'Network connection to the server failed. Please try again later.',
+        url: url,
       );
     } on FormatException {
-      throw const ApiException(
-        'Server trả về dữ liệu không hợp lệ. Hãy kiểm tra backend đang chạy đúng API JSON.',
+      throw ApiException(
+        'The server returned invalid data. Please make sure the backend is serving the correct JSON API.',
+        url: url,
       );
     }
   }
@@ -96,31 +134,39 @@ class ApiService {
     Map<String, dynamic> data, {
     Map<String, String>? headers,
   }) async {
+    final url = '$baseUrl$endpoint';
+    _debugLog('POST $url');
+    _debugLog('POST payload keys: ${data.keys.join(', ')}');
+
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse(url),
             headers: {'Content-Type': 'application/json', ...?headers},
             body: jsonEncode(data),
           )
           .timeout(_timeout);
 
-      return _parseResponse(response);
+      return _parseResponse(response, url: url);
     } on TimeoutException {
-      throw const ApiException(
-        'Server phản hồi quá lâu. Hãy kiểm tra backend đang chạy và thử lại.',
+      throw ApiException(
+        'The server took too long to respond. Please make sure the backend is running and try again.',
+        url: url,
       );
     } on SocketException {
-      throw const ApiException(
-        'Không kết nối được tới server. Hãy kiểm tra API_BASE_URL hoặc backend đang chạy.',
+      throw ApiException(
+        'Could not connect to the server. Please check API_BASE_URL or make sure the backend is running.',
+        url: url,
       );
     } on http.ClientException {
-      throw const ApiException(
-        'Kết nối mạng tới server thất bại. Hãy thử lại sau.',
+      throw ApiException(
+        'Network connection to the server failed. Please try again later.',
+        url: url,
       );
     } on FormatException {
-      throw const ApiException(
-        'Server trả về dữ liệu không hợp lệ. Hãy kiểm tra backend đang chạy đúng API JSON.',
+      throw ApiException(
+        'The server returned invalid data. Please make sure the backend is serving the correct JSON API.',
+        url: url,
       );
     }
   }
@@ -132,11 +178,13 @@ class ApiService {
     String? filePath,
     Map<String, String>? headers,
   }) async {
+    final url = '$baseUrl$endpoint';
+    _debugLog('POST multipart $url');
+
     try {
-      final request =
-          http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'))
-            ..headers.addAll(headers ?? {})
-            ..fields.addAll(fields);
+      final request = http.MultipartRequest('POST', Uri.parse(url))
+        ..headers.addAll(headers ?? {})
+        ..fields.addAll(fields);
 
       if (fileField != null && filePath != null && filePath.trim().isNotEmpty) {
         request.files.add(
@@ -147,27 +195,71 @@ class ApiService {
       final streamedResponse = await request.send().timeout(_timeout);
       final response = await http.Response.fromStream(streamedResponse);
 
-      return _parseResponse(response);
+      return _parseResponse(response, url: url);
     } on TimeoutException {
-      throw const ApiException(
-        'Server phản hồi quá lâu. Hãy kiểm tra backend đang chạy và thử lại.',
+      throw ApiException(
+        'The server took too long to respond. Please make sure the backend is running and try again.',
+        url: url,
       );
     } on SocketException {
-      throw const ApiException(
-        'Không kết nối được tới server. Hãy kiểm tra API_BASE_URL hoặc backend đang chạy.',
+      throw ApiException(
+        'Could not connect to the server. Please check API_BASE_URL or make sure the backend is running.',
+        url: url,
       );
     } on http.ClientException {
-      throw const ApiException(
-        'Kết nối mạng tới server thất bại. Hãy thử lại sau.',
+      throw ApiException(
+        'Network connection to the server failed. Please try again later.',
+        url: url,
       );
     } on FormatException {
-      throw const ApiException(
-        'Server trả về dữ liệu không hợp lệ. Hãy kiểm tra backend đang chạy đúng API JSON.',
+      throw ApiException(
+        'The server returned invalid data. Please make sure the backend is serving the correct JSON API.',
+        url: url,
       );
     }
   }
 
-  Map<String, dynamic> _parseResponse(http.Response response) {
+  Future<Map<String, dynamic>> delete(
+    String endpoint, {
+    Map<String, String>? headers,
+  }) async {
+    final url = '$baseUrl$endpoint';
+    _debugLog('DELETE $url');
+
+    try {
+      final response = await http
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(_timeout);
+
+      return _parseResponse(response, url: url);
+    } on TimeoutException {
+      throw ApiException(
+        'The server took too long to respond. Please make sure the backend is running and try again.',
+        url: url,
+      );
+    } on SocketException {
+      throw ApiException(
+        'Could not connect to the server. Please check API_BASE_URL or make sure the backend is running.',
+        url: url,
+      );
+    } on http.ClientException {
+      throw ApiException(
+        'Network connection to the server failed. Please try again later.',
+        url: url,
+      );
+    } on FormatException {
+      throw ApiException(
+        'The server returned invalid data. Please make sure the backend is serving the correct JSON API.',
+        url: url,
+      );
+    }
+  }
+
+  Map<String, dynamic> _parseResponse(http.Response response, {String? url}) {
+    _debugLog(
+      'Response ${response.statusCode} from ${url ?? 'unknown-url'}: ${response.body}',
+    );
+
     final dynamic decoded = response.body.isEmpty
         ? <String, dynamic>{}
         : jsonDecode(response.body);
@@ -181,14 +273,20 @@ class ApiService {
     }
 
     if (response.statusCode == 429) {
-      throw const ApiException(
+      throw ApiException(
         'Dich vu sach online dang gioi han qua nhieu yeu cau. Hay doi mot luc roi thu lai.',
+        url: url,
+        statusCode: response.statusCode,
+        responseBody: response.body,
       );
     }
 
     throw ApiException(
       result['message'] as String? ??
-          'Server trả về lỗi ${response.statusCode}.',
+          'The server returned error ${response.statusCode}.',
+      url: url,
+      statusCode: response.statusCode,
+      responseBody: response.body,
     );
   }
 }

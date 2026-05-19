@@ -5,8 +5,8 @@ import '../../core/constants/app_colors.dart';
 enum AppTab {
   home('Home', Icons.home_rounded),
   library('Library', Icons.local_library_outlined),
-  challenge('Challenge', Icons.flag_outlined),
   statistic('Statistic', Icons.bar_chart_rounded),
+  challenge('Achievement', Icons.flag_outlined),
   account('Account', Icons.person_outline_rounded);
 
   const AppTab(this.label, this.icon);

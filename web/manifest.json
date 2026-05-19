@@ -1,6 +1,6 @@
 {
-    "name": "boocoo",
-    "short_name": "boocoo",
+    "name": "Bookie Cookie",
+    "short_name": "Bookie Cookie",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

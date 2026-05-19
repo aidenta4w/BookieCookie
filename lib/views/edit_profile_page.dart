@@ -154,8 +154,8 @@ class _EditProfileViewState extends State<_EditProfileView> {
                               icon: const Icon(Icons.photo_library_rounded),
                               label: Text(
                                 _selectedAvatar == null
-                                    ? 'Thay ảnh đại diện'
-                                    : 'Đổi ảnh đã chọn',
+                                    ? 'Change profile picture'
+                                    : 'Replace selected image',
                               ),
                             ),
                           ),
@@ -163,10 +163,10 @@ class _EditProfileViewState extends State<_EditProfileView> {
                           const _FieldLabel('Display name *'),
                           _ProfileTextField(
                             controller: _nameController,
-                            hintText: 'Nhập tên hiển thị',
+                            hintText: 'Enter display name',
                             validator: (value) {
                               if ((value ?? '').trim().isEmpty) {
-                                return 'Tên hiển thị là bắt buộc';
+                                return 'Display name is required';
                               }
                               return null;
                             },
@@ -182,7 +182,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
                           const _FieldLabel('Bio'),
                           _ProfileTextField(
                             controller: _bioController,
-                            hintText: 'Viết vài dòng về bạn',
+                            hintText: 'Write a few lines about yourself',
                             maxLines: 4,
                           ),
                           if (viewModel.errorMessage != null) ...[
@@ -223,7 +223,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
                                       ),
                                     )
                                   : const Text(
-                                      'Lưu thay đổi',
+                                      'Save changes',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,

@@ -130,7 +130,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
       await viewModel.loadDetail();
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Quote đã được thêm vào sách này.')),
+        const SnackBar(content: Text('The quote has been added to this book.')),
       );
     }
   }
@@ -145,7 +145,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
     final draft = await _showEntrySheet(
       context: context,
       title: 'Save Note',
-      hintText: 'Viết note của bạn...',
+      hintText: 'Write your note...',
       icon: Icons.edit_note_rounded,
     );
 
@@ -156,7 +156,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
       if (!didSave) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Không lưu được note.')));
+        ).showSnackBar(const SnackBar(content: Text('Could not save note.')));
         return;
       }
       _didChange = true;
@@ -164,7 +164,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Đã lưu note.')));
+      ).showSnackBar(const SnackBar(content: Text('Note saved.')));
     }
   }
 
@@ -178,7 +178,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
     final draft = await _showEntrySheet(
       context: context,
       title: 'Save Quote',
-      hintText: 'Nhập quote của bạn...',
+      hintText: 'Enter your quote...',
       icon: Icons.format_quote_rounded,
     );
 
@@ -189,7 +189,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
       if (!didSave) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Không lưu được quote.')));
+        ).showSnackBar(const SnackBar(content: Text('Could not save quote.')));
         return;
       }
       _didChange = true;
@@ -197,7 +197,70 @@ class _BookDetailViewState extends State<_BookDetailView> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Đã lưu quote.')));
+      ).showSnackBar(const SnackBar(content: Text('Quote saved.')));
+    }
+  }
+
+  Future<void> _deleteBook(
+    BuildContext context,
+    BookDetailViewModel viewModel,
+  ) async {
+    final detail = viewModel.detail;
+    if (detail == null || viewModel.isDeleting) return;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Delete book',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          content: Text(
+            'Delete "${detail.title}" from your library? This will also remove its notes, quotes, and reading sessions.',
+            style: TextStyle(
+              color: AppColors.darkBrown.withValues(alpha: 0.84),
+              height: 1.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true || !context.mounted) return;
+
+    final success = await viewModel.deleteBook();
+    if (!context.mounted) return;
+
+    if (success) {
+      _didChange = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Book deleted.')),
+      );
+      Navigator.pop(context, true);
+      return;
+    }
+
+    if (viewModel.errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(viewModel.errorMessage!)));
     }
   }
 
@@ -345,7 +408,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
                     _BookMetaSection(detail: detail),
                     const SizedBox(height: 28),
                     _DetailBlock(
-                      title: 'Đánh giá',
+                      title: 'Rating',
                       child: _RatingRow(rating: detail.rating ?? 0),
                     ),
                     const SizedBox(height: 24),
@@ -353,7 +416,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
                       title: 'Quote',
                       icon: Icons.format_quote_rounded,
                       accentColor: const Color(0xFF2196F3),
-                      emptyText: 'Chưa có quote nào cho cuốn sách này.',
+                      emptyText: 'No quotes yet for this book.',
                       entries: quotes
                           .map((quote) => quote.content.trim())
                           .where((content) => content.isNotEmpty)
@@ -367,7 +430,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
                             }
                           : null,
                       headerAction: Tooltip(
-                        message: 'OCR từ ảnh',
+                        message: 'OCR from image',
                         child: _CardActionButton(
                           icon: Icons.camera_alt_rounded,
                           onTap: () => _openQuoteScanner(context, viewModel),
@@ -380,7 +443,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
                       title: 'Note',
                       icon: Icons.edit_note_rounded,
                       accentColor: const Color(0xFFFFC107),
-                      emptyText: 'Chưa có note nào cho cuốn sách này.',
+                      emptyText: 'No notes yet for this book.',
                       entries: notes
                           .map((note) => note.content.trim())
                           .where((content) => content.isNotEmpty)
@@ -399,7 +462,7 @@ class _BookDetailViewState extends State<_BookDetailView> {
                         detail.description!.trim().isNotEmpty) ...[
                       const SizedBox(height: 24),
                       _DetailBlock(
-                        title: 'Mô tả',
+                        title: 'Description',
                         child: Text(
                           detail.description!,
                           style: TextStyle(
@@ -411,6 +474,34 @@ class _BookDetailViewState extends State<_BookDetailView> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: viewModel.isDeleting
+                            ? null
+                            : () => _deleteBook(context, viewModel),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.redAccent,
+                          side: const BorderSide(
+                            color: Colors.redAccent,
+                            width: 1.2,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        child: Text(
+                          viewModel.isDeleting ? 'Deleting...' : 'Delete Book',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -913,7 +1004,7 @@ class _InsightCard extends StatelessWidget {
                     color: AppColors.accent,
                     size: 28,
                   ),
-                  tooltip: isExpanded ? 'Ẩn bớt' : 'Hiển thị thêm',
+                  tooltip: isExpanded ? 'Show less' : 'Show more',
                 ),
               IconButton(
                 onPressed: onAddTap,
@@ -955,7 +1046,7 @@ class _InsightCard extends StatelessWidget {
                         const SizedBox(height: 14),
                         Center(
                           child: Text(
-                            'Hiển thị ${entries.length - 2} mục nữa',
+                            'Show ${entries.length - 2} more',
                             style: TextStyle(
                               color: AppColors.accent.withValues(alpha: 0.84),
                               fontWeight: FontWeight.w700,

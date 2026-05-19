@@ -965,27 +965,42 @@ class _BookDropdownField<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
+    return DropdownButtonFormField<T>(
+      initialValue: initialValue,
+      items: items,
+      onChanged: onChanged,
+      isExpanded: true,
+      icon: const Icon(
+        Icons.keyboard_arrow_down_rounded,
+        color: AppColors.darkBlue,
       ),
-      child: DropdownButtonFormField<T>(
-        initialValue: initialValue,
-        items: items,
-        onChanged: onChanged,
-        icon: const Icon(Icons.keyboard_arrow_down_rounded),
-        dropdownColor: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        style: const TextStyle(
-          color: AppColors.darkBlue,
-          fontWeight: FontWeight.w600,
+      dropdownColor: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      style: const TextStyle(
+        color: AppColors.darkBlue,
+        fontWeight: FontWeight.w600,
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
         ),
-        decoration: const InputDecoration(border: InputBorder.none),
-        hint: hint == null ? null : Text(hint!),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: BorderSide.none,
+        ),
       ),
+      hint: hint == null ? null : Text(hint!),
     );
   }
 }

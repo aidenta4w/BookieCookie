@@ -1,5 +1,6 @@
 // lib/viewmodels/auth_viewmodel.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/services/api_service.dart';
 import '../data/models/user_model.dart';
@@ -40,16 +41,34 @@ class AuthViewModel extends ChangeNotifier {
 
         token = data['token'] as String?;
         currentUser = UserModel.fromJson(userJson);
+
+        if (kDebugMode) {
+          debugPrint(
+            '[AuthViewModel] Login success with baseUrl=${ApiService.baseUrl}',
+          );
+        }
+
         return true;
       }
 
       errorMessage = result['message'] as String? ?? 'Login failed';
       return false;
     } on ApiException catch (error) {
+      if (kDebugMode) {
+        debugPrint('[AuthViewModel] Login ApiException: $error');
+      }
+
       errorMessage = error.message;
       return false;
-    } catch (_) {
-      errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại.';
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint(
+          '[AuthViewModel] Unexpected login error with baseUrl=${ApiService.baseUrl}: $error',
+        );
+        debugPrintStack(stackTrace: stackTrace);
+      }
+
+      errorMessage = 'Login failed. Please try again.';
       return false;
     } finally {
       isLoading = false;
@@ -81,7 +100,7 @@ class AuthViewModel extends ChangeNotifier {
       errorMessage = error.message;
       return false;
     } catch (_) {
-      errorMessage = 'Đăng ký thất bại. Vui lòng thử lại.';
+      errorMessage = 'Sign up failed. Please try again.';
       return false;
     } finally {
       isLoading = false;

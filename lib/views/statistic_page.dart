@@ -15,6 +15,8 @@ import 'home_page.dart';
 import 'library_page.dart';
 import 'widgets/app_bottom_bar.dart';
 
+const int _activeReadingThresholdSeconds = 120;
+
 class StatisticPage extends StatelessWidget {
   const StatisticPage({super.key, required this.user, this.token});
 
@@ -233,6 +235,7 @@ class _StatisticPageViewState extends State<_StatisticPageView> {
             final minuteGoal = _buildTodayGoal(dashboard);
             final yearlyGoal = _buildYearlyGoal(dashboard);
             final overview = _buildChallengeOverview(dashboard);
+            final streakSummary = _buildStreakSummary(dashboard, overview);
             final chartData = _buildChartData(dashboard, _selectedChartRange);
             return RefreshIndicator(
               color: AppColors.primary,
@@ -254,14 +257,13 @@ class _StatisticPageViewState extends State<_StatisticPageView> {
                         ),
                         const SizedBox(height: 20),
                         _StreakSummaryRow(
-                          currentStreak: dashboard?.streakDays ?? 0,
-                          maxStreak: dashboard?.maxStreakDays ?? 0,
+                          currentStreak: streakSummary.current,
+                          maxStreak: streakSummary.max,
                         ),
                         const SizedBox(height: 20),
                         _WeekStrip(
                           stats: weekStats,
                           selectedIndex: selectedDayIndex,
-                          todayHasRead: minuteGoal.seconds > 0,
                         ),
                         const SizedBox(height: 28),
                         _ReadingTimeChartCard(
@@ -546,7 +548,7 @@ class _TodayGoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasReadToday = seconds > 0;
+    final hasReadToday = _isActiveReadingDay(seconds);
 
     return Container(
       width: double.infinity,
@@ -1101,12 +1103,10 @@ class _WeekStrip extends StatelessWidget {
   const _WeekStrip({
     required this.stats,
     required this.selectedIndex,
-    required this.todayHasRead,
   });
 
   final List<_DayStat> stats;
   final int selectedIndex;
-  final bool todayHasRead;
 
   @override
   Widget build(BuildContext context) {
@@ -1135,7 +1135,7 @@ class _WeekStrip extends StatelessWidget {
             children: List.generate(stats.length, (index) {
               final item = stats[index];
               final isSelected = index == selectedIndex;
-              final hasRead = isSelected ? todayHasRead : item.seconds > 0;
+              final hasRead = _isActiveReadingDay(item.seconds);
 
               return Expanded(
                 child: Padding(
@@ -1606,25 +1606,41 @@ _TodayGoalData _buildTodayGoal(HomeDashboardModel? dashboard) {
 }
 
 List<_DayStat> _buildWeekStats(HomeDashboardModel? dashboard) {
-  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   final weekStats = dashboard?.statistics?.week ?? const <WeekdayStatistics>[];
+  final today = _normalizeDate(DateTime.now());
+  final todaySeconds = dashboard?.statistics?.today.seconds ?? 0;
 
   if (weekStats.isNotEmpty) {
-    return weekStats
+    final stats = weekStats
         .map(
           (item) => _DayStat(
             label: item.label,
             shortLabel: item.shortLabel,
             dayOfMonth: item.date?.day ?? 0,
-            date: item.date ?? DateTime.now(),
+            date: _normalizeDate(item.date ?? today),
             seconds: item.seconds,
           ),
         )
-        .toList();
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    final todayIndex = stats.indexWhere((item) => _isSameDay(item.date, today));
+    if (todayIndex >= 0) {
+      final current = stats[todayIndex];
+      stats[todayIndex] = _DayStat(
+        label: current.label,
+        shortLabel: current.shortLabel,
+        dayOfMonth: current.dayOfMonth,
+        date: current.date,
+        seconds: todaySeconds,
+      );
+    }
+
+    return stats;
   }
 
-  final now = DateTime.now();
-  final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+  final startOfWeek = today.subtract(Duration(days: today.weekday % 7));
 
   return labels
       .asMap()
@@ -1634,8 +1650,10 @@ List<_DayStat> _buildWeekStats(HomeDashboardModel? dashboard) {
           label: entry.value,
           shortLabel: entry.value.substring(0, 2),
           dayOfMonth: startOfWeek.add(Duration(days: entry.key)).day,
-          date: startOfWeek.add(Duration(days: entry.key)),
-          seconds: 0,
+          date: _normalizeDate(startOfWeek.add(Duration(days: entry.key))),
+          seconds: _isSameDay(startOfWeek.add(Duration(days: entry.key)), today)
+              ? todaySeconds
+              : 0,
         ),
       )
       .toList();
@@ -1643,12 +1661,7 @@ List<_DayStat> _buildWeekStats(HomeDashboardModel? dashboard) {
 
 int _resolveSystemDayIndex(List<_DayStat> stats) {
   final now = DateTime.now();
-  final index = stats.indexWhere(
-    (item) =>
-        item.date.year == now.year &&
-        item.date.month == now.month &&
-        item.date.day == now.day,
-  );
+  final index = stats.indexWhere((item) => _isSameDay(item.date, now));
 
   return index >= 0 ? index : 0;
 }
@@ -1715,17 +1728,31 @@ ChallengeOverview _buildChallengeOverview(HomeDashboardModel? dashboard) {
     return fallback;
   }
 
+  final normalizedLevels = _normalizeYearlyActivityLevels(
+    year: year,
+    sourceLevels: yearStats.yearlyActivityLevels,
+    weekStats: dashboard.statistics?.week ?? const <WeekdayStatistics>[],
+    todaySeconds: dashboard.statistics?.today.seconds ?? 0,
+  );
+  final activeDays = normalizedLevels.where((level) => level > 0).length;
+  final completionRate = _calculateCompletionRate(activeDays, year);
+  final streakStats = _calculateStreakStats(
+    normalizedLevels,
+    year: year,
+    today: DateTime.now(),
+  );
+
   return ChallengeOverview(
     year: year,
     readingHours: yearStats.readingHours,
     booksFinished: yearStats.booksFinished,
-    streakDays: dashboard.streakDays,
+    streakDays: streakStats.current,
     quotesSaved: yearStats.quotesSaved,
     currentReadingCount: yearStats.currentReadingCount,
-    activeDays: yearStats.activeDays,
-    completionRate: yearStats.completionRate,
+    activeDays: activeDays,
+    completionRate: completionRate,
     highlightedBookTitle: yearStats.highlightedBookTitle,
-    yearlyActivityLevels: yearStats.yearlyActivityLevels,
+    yearlyActivityLevels: normalizedLevels,
   );
 }
 
@@ -1774,6 +1801,122 @@ List<List<int>> _buildActivityColumns(ChallengeOverview overview) {
   return columns;
 }
 
+List<int> _normalizeYearlyActivityLevels({
+  required int year,
+  required List<int> sourceLevels,
+  required List<WeekdayStatistics> weekStats,
+  required int todaySeconds,
+}) {
+  final totalDays =
+      DateTime(year + 1, 1, 1).difference(DateTime(year, 1, 1)).inDays;
+  final levels = List<int>.filled(totalDays, 0);
+
+  for (var index = 0; index < math.min(sourceLevels.length, totalDays); index++) {
+    levels[index] = sourceLevels[index].clamp(0, 4).toInt();
+  }
+
+  for (final item in weekStats) {
+    final date = item.date == null ? null : _normalizeDate(item.date!);
+    if (date == null || date.year != year) {
+      continue;
+    }
+
+    final dayIndex = date.difference(DateTime(year, 1, 1)).inDays;
+    if (dayIndex < 0 || dayIndex >= levels.length) {
+      continue;
+    }
+
+    levels[dayIndex] = _isActiveReadingDay(item.seconds)
+        ? math.max(levels[dayIndex], 1).toInt()
+        : 0;
+  }
+
+  final today = _normalizeDate(DateTime.now());
+  if (today.year == year) {
+    final todayIndex = today.difference(DateTime(year, 1, 1)).inDays;
+    if (todayIndex >= 0 && todayIndex < levels.length) {
+      levels[todayIndex] = _isActiveReadingDay(todaySeconds)
+          ? math.max(levels[todayIndex], 1).toInt()
+          : 0;
+    }
+  }
+
+  return levels;
+}
+
+double _calculateCompletionRate(int activeDays, int year) {
+  final now = DateTime.now();
+  final elapsedDays = year == now.year
+      ? now.difference(DateTime(year, 1, 1)).inDays + 1
+      : DateTime(year + 1, 1, 1).difference(DateTime(year, 1, 1)).inDays;
+
+  if (elapsedDays <= 0) {
+    return 0;
+  }
+
+  return (activeDays / elapsedDays).clamp(0, 1).toDouble();
+}
+
+_StreakSummary _buildStreakSummary(
+  HomeDashboardModel? dashboard,
+  ChallengeOverview overview,
+) {
+  if (dashboard == null) {
+    return const _StreakSummary(current: 0, max: 0);
+  }
+
+  return _calculateStreakStats(
+    overview.yearlyActivityLevels,
+    year: overview.year,
+    today: DateTime.now(),
+  );
+}
+
+_StreakSummary _calculateStreakStats(
+  List<int> activityLevels, {
+  required int year,
+  required DateTime today,
+}) {
+  if (activityLevels.isEmpty) {
+    return const _StreakSummary(current: 0, max: 0);
+  }
+
+  var maxStreak = 0;
+  var running = 0;
+  for (final level in activityLevels) {
+    if (level > 0) {
+      running += 1;
+      if (running > maxStreak) {
+        maxStreak = running;
+      }
+    } else {
+      running = 0;
+    }
+  }
+
+  var currentStreak = 0;
+  final effectiveToday = _normalizeDate(today);
+  if (effectiveToday.year == year) {
+    final todayIndex = effectiveToday.difference(DateTime(year, 1, 1)).inDays;
+    for (var index = todayIndex; index >= 0; index--) {
+      if (index >= activityLevels.length || activityLevels[index] <= 0) {
+        break;
+      }
+      currentStreak += 1;
+    }
+  }
+
+  return _StreakSummary(current: currentStreak, max: maxStreak);
+}
+
+bool _isActiveReadingDay(int seconds) => seconds >= _activeReadingThresholdSeconds;
+
+DateTime _normalizeDate(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
+
+bool _isSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
 Color _heatmapColor(int level) {
   switch (level) {
     case 4:
@@ -1787,4 +1930,11 @@ Color _heatmapColor(int level) {
     default:
       return const Color(0xFFF1F3F7);
   }
+}
+
+class _StreakSummary {
+  const _StreakSummary({required this.current, required this.max});
+
+  final int current;
+  final int max;
 }

@@ -6,7 +6,7 @@
         android:maxSdkVersion="29"
         tools:replace="android:maxSdkVersion" />
     <application
-        android:label="boocoo"
+        android:label="Bookie Cookie"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

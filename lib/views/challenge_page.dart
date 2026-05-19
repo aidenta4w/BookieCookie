@@ -141,7 +141,7 @@ class _ChallengePageView extends StatelessWidget {
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 2,
-                                  childAspectRatio: 0.82,
+                                  mainAxisExtent: 232,
                                   crossAxisSpacing: 16,
                                   mainAxisSpacing: 16,
                                 ),
@@ -238,7 +238,7 @@ class _ChallengeHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Challenge',
+            'Achievement',
             style: TextStyle(
               color: AppColors.darkBlue,
               fontSize: 28,
@@ -480,30 +480,37 @@ class _AchievementCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 14),
-              Text(
-                achievement.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.darkBlue,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  height: 1.25,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      achievement.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.darkBlue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      achievement.description,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.darkBrown.withValues(alpha: 0.76),
+                        fontSize: 12,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                achievement.description,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppColors.darkBrown.withValues(alpha: 0.76),
-                  fontSize: 12,
-                  height: 1.35,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
+              const SizedBox(height: 10),
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
@@ -663,7 +670,7 @@ class _EmptyUnlockCard extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Text(
-        'No medals unlocked yet. Finish your first challenge to start your collection.',
+        'No medals unlocked yet. Complete your first achievement to start your collection.',
         textAlign: TextAlign.center,
         style: TextStyle(
           color: AppColors.darkBrown.withValues(alpha: 0.8),
