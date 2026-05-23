@@ -1,0 +1,778 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../core/constants/app_colors.dart';
+import '../data/models/google_book_search_result.dart';
+import '../data/models/library_book_model.dart';
+import '../data/models/user_model.dart';
+import '../viewmodels/library_viewmodel.dart';
+import 'account_page.dart';
+import 'barcode_scan_page.dart';
+import 'book_detail_page.dart';
+import 'challenge_page.dart';
+import 'home_page.dart';
+import 'manual_add_book_page.dart';
+import 'statistic_page.dart';
+import 'widgets/add_book_menu_button.dart';
+import 'widgets/app_bottom_bar.dart';
+
+class LibraryPage extends StatelessWidget {
+  const LibraryPage({super.key, required this.user, this.token});
+
+  final UserModel user;
+  final String? token;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => LibraryViewModel(user: user, token: token)..loadLibrary(),
+      child: _LibraryPageView(user: user, token: token),
+    );
+  }
+}
+
+class _LibraryPageView extends StatefulWidget {
+  const _LibraryPageView({required this.user, required this.token});
+
+  final UserModel user;
+  final String? token;
+
+  @override
+  State<_LibraryPageView> createState() => _LibraryPageViewState();
+}
+
+class _LibraryPageViewState extends State<_LibraryPageView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedStatus = _libraryStatusFilters.first.value;
+  String _selectedYear = 'all';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleAddBookAction(
+    BuildContext context,
+    LibraryViewModel libraryVM,
+    AddBookAction action,
+  ) async {
+    switch (action) {
+      case AddBookAction.manual:
+        final created = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                ManualAddBookPage(user: widget.user, token: widget.token),
+          ),
+        );
+
+        if (created == true) {
+          await libraryVM.loadLibrary();
+        }
+        break;
+      case AddBookAction.searchOnline:
+        final created = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ManualAddBookPage(
+              user: widget.user,
+              token: widget.token,
+              initialMode: AddBookMode.searchOnline,
+            ),
+          ),
+        );
+
+        if (created == true) {
+          await libraryVM.loadLibrary();
+        }
+        break;
+      case AddBookAction.scanIsbn:
+        final GoogleBookSearchResult? scannedBook =
+            await Navigator.push<GoogleBookSearchResult>(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    BarcodeScanPage(user: widget.user, token: widget.token),
+              ),
+            );
+
+        if (!context.mounted || scannedBook == null) {
+          break;
+        }
+
+        final created = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ManualAddBookPage(
+              user: widget.user,
+              token: widget.token,
+              initialMode: AddBookMode.manual,
+              initialSearchResult: scannedBook,
+            ),
+          ),
+        );
+
+        if (created == true) {
+          await libraryVM.loadLibrary();
+        }
+        break;
+    }
+  }
+
+  void _handleTabSelection(BuildContext context, AppTab tab) {
+    switch (tab) {
+      case AppTab.home:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomePage(user: widget.user, token: widget.token),
+          ),
+        );
+        break;
+      case AppTab.library:
+        break;
+      case AppTab.challenge:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                ChallengePage(user: widget.user, token: widget.token),
+          ),
+        );
+        break;
+      case AppTab.statistic:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                StatisticPage(user: widget.user, token: widget.token),
+          ),
+        );
+        break;
+      case AppTab.account:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AccountPage(user: widget.user, token: widget.token),
+          ),
+        );
+        break;
+    }
+  }
+
+  Future<void> _openBookDetail(BuildContext context, int userBookId) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookDetailPage(
+          user: widget.user,
+          userBookId: userBookId,
+          token: widget.token,
+        ),
+      ),
+    );
+
+    if (changed == true && context.mounted) {
+      await context.read<LibraryViewModel>().loadLibrary();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.cream,
+      body: SafeArea(
+        child: Consumer<LibraryViewModel>(
+          builder: (context, libraryVM, _) {
+            final availableYears = libraryVM.books
+                .expand((book) => book.filterYears)
+                .toSet()
+                .toList()
+              ..sort((a, b) => b.compareTo(a));
+
+            final query = _searchQuery.trim().toLowerCase();
+            final scopedBooks = libraryVM.books.where((book) {
+              final matchesStatus =
+                  _selectedStatus == 'all' || book.status == _selectedStatus;
+              final matchesYear =
+                  _selectedYear == 'all' ||
+                  book.filterYears.contains(int.tryParse(_selectedYear));
+
+              return matchesStatus && matchesYear;
+            }).toList();
+
+            final filteredBooks = scopedBooks.where((book) {
+              if (query.isEmpty) {
+                return true;
+              }
+
+              final matchesQuery =
+                  book.title.toLowerCase().contains(query) ||
+                  book.author.toLowerCase().contains(query);
+
+              return matchesQuery;
+            }).toList();
+
+            return RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: libraryVM.loadLibrary,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _LibraryHeader(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
+                          selectedStatus: _selectedStatus,
+                          statusOptions: _libraryStatusFilters,
+                          onStatusSelected: (value) {
+                            setState(() {
+                              _selectedStatus = value;
+                            });
+                          },
+                          selectedYear: _selectedYear,
+                          availableYears: availableYears,
+                          onYearSelected: (value) {
+                            setState(() {
+                              _selectedYear = value;
+                            });
+                          },
+                          onAddBookSelected: (action) =>
+                              _handleAddBookAction(context, libraryVM, action),
+                        ),
+                        const SizedBox(height: 24),
+                        _LibrarySummary(
+                          totalBooks: scopedBooks.length,
+                          visibleBooks: filteredBooks.length,
+                        ),
+                        const SizedBox(height: 20),
+                        if (libraryVM.isLoading && libraryVM.books.isEmpty)
+                          const SizedBox(
+                            height: 260,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          )
+                        else if (libraryVM.errorMessage != null &&
+                            libraryVM.books.isEmpty)
+                          _LibraryMessageCard(message: libraryVM.errorMessage!)
+                        else if (filteredBooks.isEmpty)
+                          _LibraryMessageCard(
+                            message: libraryVM.books.isEmpty
+                                ? 'Your library is empty. Add your first book to get started.'
+                                : 'No books match your search.',
+                          )
+                        else
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: filteredBooks.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  childAspectRatio: 0.62,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 18,
+                                ),
+                            itemBuilder: (context, index) {
+                              return _LibraryBookCard(
+                                book: filteredBooks[index],
+                                onTap: () => _openBookDetail(
+                                  context,
+                                  filteredBooks[index].id,
+                                ),
+                              );
+                            },
+                          ),
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+      bottomNavigationBar: AppBottomBar(
+        currentTab: AppTab.library,
+        onTabSelected: (tab) => _handleTabSelection(context, tab),
+      ),
+    );
+  }
+}
+
+class _LibraryHeader extends StatelessWidget {
+  const _LibraryHeader({
+    required this.controller,
+    required this.onChanged,
+    required this.selectedStatus,
+    required this.statusOptions,
+    required this.onStatusSelected,
+    required this.selectedYear,
+    required this.availableYears,
+    required this.onYearSelected,
+    required this.onAddBookSelected,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final String selectedStatus;
+  final List<_LibraryStatusFilter> statusOptions;
+  final ValueChanged<String> onStatusSelected;
+  final String selectedYear;
+  final List<int> availableYears;
+  final ValueChanged<String> onYearSelected;
+  final ValueChanged<AddBookAction> onAddBookSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Library',
+              style: TextStyle(
+                color: AppColors.darkBlue,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Spacer(),
+            AddBookMenuButton(onSelected: onAddBookSelected),
+          ],
+        ),
+        const SizedBox(height: 18),
+        TextField(
+          controller: controller,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: 'Search books or authors',
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: AppColors.primary,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 18,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide(
+                color: AppColors.primary.withValues(alpha: 0.16),
+              ),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(999)),
+              borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: statusOptions.length,
+            separatorBuilder: (_, index) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final option = statusOptions[index];
+              final isSelected = option.value == selectedStatus;
+
+              return ChoiceChip(
+                label: Text(option.label),
+                selected: isSelected,
+                onSelected: (_) => onStatusSelected(option.value),
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+                backgroundColor: Colors.white,
+                selectedColor: AppColors.primary,
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.primary.withValues(alpha: 0.16),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                showCheckmark: false,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: availableYears.length + 1,
+            separatorBuilder: (_, index) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final isAllOption = index == 0;
+              final value = isAllOption
+                  ? 'all'
+                  : availableYears[index - 1].toString();
+              final label = isAllOption ? 'All years' : value;
+              final isSelected = value == selectedYear;
+
+              return ChoiceChip(
+                label: Text(label),
+                selected: isSelected,
+                onSelected: (_) => onYearSelected(value),
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.darkBlue,
+                  fontWeight: FontWeight.w700,
+                ),
+                backgroundColor: Colors.white,
+                selectedColor: AppColors.darkBlue,
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.darkBlue
+                      : AppColors.darkBlue.withValues(alpha: 0.14),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                showCheckmark: false,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LibrarySummary extends StatelessWidget {
+  const _LibrarySummary({required this.totalBooks, required this.visibleBooks});
+
+  final int totalBooks;
+  final int visibleBooks;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          '$visibleBooks book${visibleBooks == 1 ? '' : 's'}',
+          style: const TextStyle(
+            color: AppColors.darkBlue,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          'Total: $totalBooks',
+          style: TextStyle(
+            color: AppColors.darkBrown.withValues(alpha: 0.75),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LibraryBookCard extends StatelessWidget {
+  const _LibraryBookCard({required this.book, required this.onTap});
+
+  final LibraryBookModel book;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(28),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                blurRadius: 22,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    color: AppColors.cream,
+                    child:
+                        book.coverImageUrl != null &&
+                            book.coverImageUrl!.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Image.network(
+                              book.coverImageUrl!,
+                              fit: BoxFit.contain,
+                              alignment: Alignment.center,
+                              errorBuilder: (_, error, stackTrace) =>
+                                  _LibraryBookFallback(title: book.title),
+                            ),
+                          )
+                        : _LibraryBookFallback(title: book.title),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      book.title,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.darkBlue,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      book.author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.darkBrown.withValues(alpha: 0.82),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _RatingStars(rating: book.rating ?? 0),
+                    const SizedBox(height: 10),
+                    _StatusChip(
+                      label: _statusLabel(book.status),
+                      color: _statusColor(book.status),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LibraryBookFallback extends StatelessWidget {
+  const _LibraryBookFallback({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withValues(alpha: 0.92),
+            AppColors.darkBlue,
+          ],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Text(
+              'My Book',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const Spacer(),
+          const Icon(Icons.menu_book_rounded, color: Colors.white, size: 30),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              height: 1.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _RatingStars extends StatelessWidget {
+  const _RatingStars({required this.rating});
+
+  final int rating;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final filled = index < rating.clamp(0, 5);
+        return Padding(
+          padding: const EdgeInsets.only(left: 2),
+          child: Icon(
+            filled ? Icons.star_rounded : Icons.star_border_rounded,
+            size: 16,
+            color: AppColors.secondary,
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _LibraryMessageCard extends StatelessWidget {
+  const _LibraryMessageCard({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
+      ),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: AppColors.darkBrown.withValues(alpha: 0.82),
+          fontWeight: FontWeight.w700,
+          height: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
+String _statusLabel(String status) {
+  switch (status) {
+    case 'reading':
+      return 'Reading';
+    case 'finished':
+      return 'Finished';
+    case 'abandoned':
+      return 'Dropped';
+    default:
+      return 'Planned';
+  }
+}
+
+Color _statusColor(String status) {
+  switch (status) {
+    case 'reading':
+      return const Color(0xFFE0A106);
+    case 'finished':
+      return const Color(0xFF2E9B50);
+    case 'abandoned':
+      return const Color(0xFF8A9099);
+    default:
+      return const Color(0xFF2F80ED);
+  }
+}
+
+class _LibraryStatusFilter {
+  const _LibraryStatusFilter({required this.value, required this.label});
+
+  final String value;
+  final String label;
+}
+
+const List<_LibraryStatusFilter> _libraryStatusFilters = [
+  _LibraryStatusFilter(value: 'all', label: 'All'),
+  _LibraryStatusFilter(value: 'plan_to_read', label: 'Planned'),
+  _LibraryStatusFilter(value: 'reading', label: 'Reading'),
+  _LibraryStatusFilter(value: 'finished', label: 'Finished'),
+  _LibraryStatusFilter(value: 'abandoned', label: 'Dropped'),
+];
