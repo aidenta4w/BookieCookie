@@ -77,15 +77,27 @@ const findLatestGoalValue = (goals, goalType, { month = null } = {}) => {
   return matched ? Number(matched.target_value) : 0;
 };
 
-const getDashboard = async (userId, requestedYear) => {
+const getDashboard = async (userId, requestedYear, requestedAnchorDate) => {
   const now = new Date();
   const currentYear = now.getUTCFullYear();
+  const parsedAnchorDate =
+    typeof requestedAnchorDate === "string" && requestedAnchorDate.trim()
+      ? new Date(requestedAnchorDate)
+      : null;
+  const hasAnchorDate =
+    parsedAnchorDate instanceof Date && !Number.isNaN(parsedAnchorDate.getTime());
   const year =
     Number.isInteger(requestedYear) && requestedYear > 0
       ? requestedYear
+      : hasAnchorDate
+        ? parsedAnchorDate.getUTCFullYear()
       : currentYear;
   const anchorDate =
-    year === currentYear ? now : new Date(Date.UTC(year, 11, 31));
+    hasAnchorDate
+      ? parsedAnchorDate
+      : year === currentYear
+        ? now
+        : new Date(Date.UTC(year, 11, 31));
   const month = anchorDate.getUTCMonth() + 1;
 
   const [
@@ -95,7 +107,8 @@ const getDashboard = async (userId, requestedYear) => {
     activityDates,
     currentDate,
     todayReading,
-    weeklyReading,
+    currentWeeklyReading,
+    chartWeeklyReading,
     monthlyReading,
     yearlyQuoteCount,
     yearlyReadingMinutes,
@@ -108,6 +121,7 @@ const getDashboard = async (userId, requestedYear) => {
     homeModel.getReadingActivityDates(userId),
     homeModel.getCurrentDate(),
     homeModel.getTodayReadingStats(userId),
+    homeModel.getWeeklyReadingStats(userId, now),
     homeModel.getWeeklyReadingStats(userId, anchorDate),
     homeModel.getMonthlyReadingStats(userId, anchorDate),
     homeModel.getYearlyQuoteCount(userId, year),
@@ -122,7 +136,18 @@ const getDashboard = async (userId, requestedYear) => {
   const goalSeconds = monthlyHoursGoal > 0
     ? Math.max(60, Math.round((monthlyHoursGoal * 3600) / 30))
     : 0;
-  const weeklyStats = weeklyReading.map((row) => {
+  const weeklyStats = currentWeeklyReading.map((row) => {
+    const date = new Date(row.day_date);
+
+    return {
+      label: toWeekdayLabel(date),
+      short_label: toWeekdayLabel(date).slice(0, 2),
+      date: row.day_date,
+      seconds: Number(row.seconds ?? 0),
+      pages_read: Number(row.pages_read ?? 0),
+    };
+  });
+  const chartWeeklyStats = chartWeeklyReading.map((row) => {
     const date = new Date(row.day_date);
 
     return {
@@ -176,7 +201,7 @@ const getDashboard = async (userId, requestedYear) => {
       },
       week: weeklyStats,
       chart: {
-        week: weeklyStats,
+        week: chartWeeklyStats,
         month: monthlyStats,
       },
       year: {

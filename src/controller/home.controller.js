@@ -4,6 +4,10 @@ const getDashboard = async (req, res) => {
   try {
     const userId = Number(req.params.userId);
     const requestedYear = Number(req.query.year);
+    const anchorDate =
+      typeof req.query.anchorDate === "string" && req.query.anchorDate.trim()
+        ? req.query.anchorDate.trim()
+        : undefined;
     const year = Number.isInteger(requestedYear) && requestedYear > 0
       ? requestedYear
       : undefined;
@@ -15,7 +19,7 @@ const getDashboard = async (req, res) => {
       });
     }
 
-    const data = await homeViewModel.getDashboard(userId, year);
+    const data = await homeViewModel.getDashboard(userId, year, anchorDate);
 
     return res.status(200).json({
       success: true,
@@ -34,6 +38,10 @@ const getStatistics = async (req, res) => {
   try {
     const userId = Number(req.params.userId);
     const requestedYear = Number(req.query.year);
+    const anchorDate =
+      typeof req.query.anchorDate === "string" && req.query.anchorDate.trim()
+        ? req.query.anchorDate.trim()
+        : undefined;
     const year = Number.isInteger(requestedYear) && requestedYear > 0
       ? requestedYear
       : undefined;
@@ -45,7 +53,7 @@ const getStatistics = async (req, res) => {
       });
     }
 
-    const data = await homeViewModel.getDashboard(userId, year);
+    const data = await homeViewModel.getDashboard(userId, year, anchorDate);
 
     return res.status(200).json({
       success: true,

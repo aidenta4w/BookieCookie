@@ -125,9 +125,9 @@ const normalizeManualBookPayload = ({
   if (
     parsedStartDate !== null &&
     parsedFinishDate !== null &&
-    new Date(parsedFinishDate) <= new Date(parsedStartDate)
+    new Date(parsedFinishDate) < new Date(parsedStartDate)
   ) {
-    throw new Error("Finish date must be after start date");
+    throw new Error("Finish date must be on or after start date");
   }
 
   return {
