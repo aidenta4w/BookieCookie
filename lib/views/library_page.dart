@@ -45,6 +45,7 @@ class _LibraryPageViewState extends State<_LibraryPageView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedStatus = _libraryStatusFilters.first.value;
+  String _selectedYear = 'all';
 
   @override
   void dispose() {
@@ -185,17 +186,33 @@ class _LibraryPageViewState extends State<_LibraryPageView> {
       body: SafeArea(
         child: Consumer<LibraryViewModel>(
           builder: (context, libraryVM, _) {
-            final filteredBooks = libraryVM.books.where((book) {
-              final query = _searchQuery.trim().toLowerCase();
+            final availableYears = libraryVM.books
+                .expand((book) => book.filterYears)
+                .toSet()
+                .toList()
+              ..sort((a, b) => b.compareTo(a));
+
+            final query = _searchQuery.trim().toLowerCase();
+            final scopedBooks = libraryVM.books.where((book) {
               final matchesStatus =
                   _selectedStatus == 'all' || book.status == _selectedStatus;
-              if (query.isEmpty) return matchesStatus;
+              final matchesYear =
+                  _selectedYear == 'all' ||
+                  book.filterYears.contains(int.tryParse(_selectedYear));
+
+              return matchesStatus && matchesYear;
+            }).toList();
+
+            final filteredBooks = scopedBooks.where((book) {
+              if (query.isEmpty) {
+                return true;
+              }
 
               final matchesQuery =
                   book.title.toLowerCase().contains(query) ||
                   book.author.toLowerCase().contains(query);
 
-              return matchesStatus && matchesQuery;
+              return matchesQuery;
             }).toList();
 
             return RefreshIndicator(
@@ -222,12 +239,19 @@ class _LibraryPageViewState extends State<_LibraryPageView> {
                               _selectedStatus = value;
                             });
                           },
+                          selectedYear: _selectedYear,
+                          availableYears: availableYears,
+                          onYearSelected: (value) {
+                            setState(() {
+                              _selectedYear = value;
+                            });
+                          },
                           onAddBookSelected: (action) =>
                               _handleAddBookAction(context, libraryVM, action),
                         ),
                         const SizedBox(height: 24),
                         _LibrarySummary(
-                          totalBooks: libraryVM.books.length,
+                          totalBooks: scopedBooks.length,
                           visibleBooks: filteredBooks.length,
                         ),
                         const SizedBox(height: 20),
@@ -295,6 +319,9 @@ class _LibraryHeader extends StatelessWidget {
     required this.selectedStatus,
     required this.statusOptions,
     required this.onStatusSelected,
+    required this.selectedYear,
+    required this.availableYears,
+    required this.onYearSelected,
     required this.onAddBookSelected,
   });
 
@@ -303,6 +330,9 @@ class _LibraryHeader extends StatelessWidget {
   final String selectedStatus;
   final List<_LibraryStatusFilter> statusOptions;
   final ValueChanged<String> onStatusSelected;
+  final String selectedYear;
+  final List<int> availableYears;
+  final ValueChanged<String> onYearSelected;
   final ValueChanged<AddBookAction> onAddBookSelected;
 
   @override
@@ -380,6 +410,48 @@ class _LibraryHeader extends StatelessWidget {
                   color: isSelected
                       ? AppColors.primary
                       : AppColors.primary.withValues(alpha: 0.16),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                showCheckmark: false,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: availableYears.length + 1,
+            separatorBuilder: (_, index) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final isAllOption = index == 0;
+              final value = isAllOption
+                  ? 'all'
+                  : availableYears[index - 1].toString();
+              final label = isAllOption ? 'All years' : value;
+              final isSelected = value == selectedYear;
+
+              return ChoiceChip(
+                label: Text(label),
+                selected: isSelected,
+                onSelected: (_) => onYearSelected(value),
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.darkBlue,
+                  fontWeight: FontWeight.w700,
+                ),
+                backgroundColor: Colors.white,
+                selectedColor: AppColors.darkBlue,
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.darkBlue
+                      : AppColors.darkBlue.withValues(alpha: 0.14),
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),
@@ -491,7 +563,8 @@ class _LibraryBookCard extends StatelessWidget {
                   children: [
                     Text(
                       book.title,
-                      maxLines: 2,
+                      maxLines: 1,
+                      softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.darkBlue,

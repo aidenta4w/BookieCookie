@@ -25,11 +25,12 @@ class StatisticPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentYear = DateTime.now().year;
+    final now = DateTime.now();
+    final currentYear = now.year;
     return ChangeNotifierProvider(
       create: (_) =>
           HomeViewModel(user: user, token: token)
-            ..loadDashboard(year: currentYear),
+            ..loadDashboard(year: currentYear, anchorDate: now),
       child: _StatisticPageView(user: user, token: token),
     );
   }
@@ -46,25 +47,47 @@ class _StatisticPageView extends StatefulWidget {
 }
 
 class _StatisticPageViewState extends State<_StatisticPageView> {
-  late int _selectedYear;
+  DateTime _chartAnchorDate = _normalizeDate(DateTime.now());
   _ChartRange _selectedChartRange = _ChartRange.week;
 
-  @override
-  void initState() {
-    super.initState();
-    _selectedYear = DateTime.now().year;
-  }
-
-  Future<void> _changeYear(int year) async {
-    if (_selectedYear == year) {
+  Future<void> _loadDashboardForAnchor(DateTime anchorDate) async {
+    final normalizedAnchor = _normalizeDate(anchorDate);
+    if (_isSameDay(_chartAnchorDate, normalizedAnchor)) {
       return;
     }
 
     setState(() {
-      _selectedYear = year;
+      _chartAnchorDate = normalizedAnchor;
     });
 
-    await context.read<HomeViewModel>().loadDashboard(year: year);
+    await context.read<HomeViewModel>().loadDashboard(
+      year: normalizedAnchor.year,
+      anchorDate: normalizedAnchor,
+    );
+  }
+
+  Future<void> _handleChartRangeChanged(_ChartRange range) async {
+    if (_selectedChartRange == range) {
+      return;
+    }
+
+    setState(() {
+      _selectedChartRange = range;
+    });
+
+    await context.read<HomeViewModel>().loadDashboard(
+      year: _chartAnchorDate.year,
+      anchorDate: _chartAnchorDate,
+    );
+  }
+
+  Future<void> _changeChartPeriod(int direction) async {
+    final nextAnchor = _shiftChartAnchorDate(
+      _chartAnchorDate,
+      _selectedChartRange,
+      direction,
+    );
+    await _loadDashboardForAnchor(nextAnchor);
   }
 
   void _handleTabSelection(BuildContext context, AppTab tab) {
@@ -218,17 +241,7 @@ class _StatisticPageViewState extends State<_StatisticPageView> {
         child: Consumer<HomeViewModel>(
           builder: (context, homeVM, _) {
             final dashboard = homeVM.dashboard;
-            final dashboardYear = dashboard?.year ?? _selectedYear;
-            if (dashboardYear != _selectedYear) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) {
-                  return;
-                }
-                setState(() {
-                  _selectedYear = dashboardYear;
-                });
-              });
-            }
+            final dashboardYear = dashboard?.year ?? _chartAnchorDate.year;
             final weekStats = _buildWeekStats(dashboard);
             final selectedDayIndex = _resolveSystemDayIndex(weekStats);
             final selectedStat = weekStats[selectedDayIndex];
@@ -237,9 +250,18 @@ class _StatisticPageViewState extends State<_StatisticPageView> {
             final overview = _buildChallengeOverview(dashboard);
             final streakSummary = _buildStreakSummary(dashboard, overview);
             final chartData = _buildChartData(dashboard, _selectedChartRange);
+            final now = _normalizeDate(DateTime.now());
+            final canGoNext = _canNavigateToNextChartPeriod(
+              anchorDate: _chartAnchorDate,
+              selectedRange: _selectedChartRange,
+              today: now,
+            );
             return RefreshIndicator(
               color: AppColors.primary,
-              onRefresh: () => homeVM.loadDashboard(year: _selectedYear),
+              onRefresh: () => homeVM.loadDashboard(
+                year: _chartAnchorDate.year,
+                anchorDate: _chartAnchorDate,
+              ),
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
@@ -267,17 +289,17 @@ class _StatisticPageViewState extends State<_StatisticPageView> {
                         ),
                         const SizedBox(height: 28),
                         _ReadingTimeChartCard(
-                          year: dashboardYear,
+                          anchorDate: _chartAnchorDate,
                           chartData: chartData,
                           selectedRange: _selectedChartRange,
-                          onRangeChanged: (range) {
-                            setState(() {
-                              _selectedChartRange = range;
-                            });
+                          onRangeChanged: _handleChartRangeChanged,
+                          onPreviousPeriod: () {
+                            _changeChartPeriod(-1);
                           },
-                          onPreviousYear: () => _changeYear(dashboardYear - 1),
-                          onNextYear: dashboardYear < DateTime.now().year
-                              ? () => _changeYear(dashboardYear + 1)
+                          onNextPeriod: canGoNext
+                              ? () {
+                                  _changeChartPeriod(1);
+                                }
                               : null,
                         ),
                         const SizedBox(height: 28),
@@ -739,26 +761,32 @@ class _StreakStatCard extends StatelessWidget {
 
 class _ReadingTimeChartCard extends StatelessWidget {
   const _ReadingTimeChartCard({
-    required this.year,
+    required this.anchorDate,
     required this.chartData,
     required this.selectedRange,
     required this.onRangeChanged,
-    required this.onPreviousYear,
-    required this.onNextYear,
+    required this.onPreviousPeriod,
+    required this.onNextPeriod,
   });
 
-  final int year;
+  final DateTime anchorDate;
   final _ChartData chartData;
   final _ChartRange selectedRange;
   final ValueChanged<_ChartRange> onRangeChanged;
-  final VoidCallback onPreviousYear;
-  final VoidCallback? onNextYear;
+  final VoidCallback onPreviousPeriod;
+  final VoidCallback? onNextPeriod;
 
   @override
   Widget build(BuildContext context) {
     final totalMinutes = chartData.points.fold<int>(
       0,
       (sum, point) => sum + point.seconds,
+    );
+    final periodLabel = _formatChartPeriodLabel(anchorDate);
+    final summaryLabel = _formatChartSummaryLabel(
+      anchorDate: anchorDate,
+      selectedRange: selectedRange,
+      today: _normalizeDate(DateTime.now()),
     );
 
     return Container(
@@ -790,9 +818,9 @@ class _ReadingTimeChartCard extends StatelessWidget {
                 ),
               );
               final yearStepper = _YearStepper(
-                year: year,
-                onPrevious: onPreviousYear,
-                onNext: onNextYear,
+                label: periodLabel,
+                onPrevious: onPreviousPeriod,
+                onNext: onNextPeriod,
                 compact: isCompact,
               );
 
@@ -827,9 +855,7 @@ class _ReadingTimeChartCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    selectedRange == _ChartRange.week
-                        ? 'this week'
-                        : 'this month',
+                    summaryLabel,
                     style: TextStyle(
                       color: AppColors.darkBrown.withValues(alpha: 0.68),
                       fontSize: 14,
@@ -867,13 +893,13 @@ class _ReadingTimeChartCard extends StatelessWidget {
 
 class _YearStepper extends StatelessWidget {
   const _YearStepper({
-    required this.year,
+    required this.label,
     required this.onPrevious,
     required this.onNext,
     this.compact = false,
   });
 
-  final int year;
+  final String label;
   final VoidCallback onPrevious;
   final VoidCallback? onNext;
   final bool compact;
@@ -900,7 +926,7 @@ class _YearStepper extends StatelessWidget {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
             child: Text(
-              '$year',
+              label,
               style: TextStyle(
                 color: AppColors.darkBlue,
                 fontWeight: FontWeight.w800,
@@ -1686,6 +1712,74 @@ _ChartData _buildChartData(HomeDashboardModel? dashboard, _ChartRange range) {
   );
 }
 
+DateTime _shiftChartAnchorDate(
+  DateTime anchorDate,
+  _ChartRange range,
+  int direction,
+) {
+  switch (range) {
+    case _ChartRange.week:
+      return _normalizeDate(anchorDate.add(Duration(days: 7 * direction)));
+    case _ChartRange.month:
+      return _normalizeDate(
+        DateTime(anchorDate.year, anchorDate.month + direction, 1),
+      );
+  }
+}
+
+bool _canNavigateToNextChartPeriod({
+  required DateTime anchorDate,
+  required _ChartRange selectedRange,
+  required DateTime today,
+}) {
+  final nextAnchor = _shiftChartAnchorDate(anchorDate, selectedRange, 1);
+
+  switch (selectedRange) {
+    case _ChartRange.week:
+      return !_startOfWeek(nextAnchor).isAfter(_startOfWeek(today));
+    case _ChartRange.month:
+      return !_startOfMonth(nextAnchor).isAfter(_startOfMonth(today));
+  }
+}
+
+String _formatChartPeriodLabel(DateTime anchorDate) {
+  const monthLabels = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  return '${monthLabels[anchorDate.month - 1]} ${anchorDate.year}';
+}
+
+String _formatChartSummaryLabel({
+  required DateTime anchorDate,
+  required _ChartRange selectedRange,
+  required DateTime today,
+}) {
+  switch (selectedRange) {
+    case _ChartRange.week:
+      if (_isSameDay(_startOfWeek(anchorDate), _startOfWeek(today))) {
+        return 'this week';
+      }
+      return 'week of ${anchorDate.day}/${anchorDate.month}/${anchorDate.year}';
+    case _ChartRange.month:
+      if (_isSameDay(_startOfMonth(anchorDate), _startOfMonth(today))) {
+        return 'this month';
+      }
+      return _formatChartPeriodLabel(anchorDate);
+  }
+}
+
 int _buildYearlyGoal(HomeDashboardModel? dashboard) {
   final goal =
       dashboard?.statistics?.year.yearlyGoalBooks ??
@@ -1913,6 +2007,13 @@ bool _isActiveReadingDay(int seconds) => seconds >= _activeReadingThresholdSecon
 
 DateTime _normalizeDate(DateTime value) =>
     DateTime(value.year, value.month, value.day);
+
+DateTime _startOfWeek(DateTime value) {
+  final normalized = _normalizeDate(value);
+  return normalized.subtract(Duration(days: normalized.weekday - 1));
+}
+
+DateTime _startOfMonth(DateTime value) => DateTime(value.year, value.month, 1);
 
 bool _isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;

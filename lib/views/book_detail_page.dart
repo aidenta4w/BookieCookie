@@ -5,6 +5,7 @@ import '../core/constants/app_colors.dart';
 import '../data/models/book_detail_model.dart';
 import '../data/models/user_model.dart';
 import '../viewmodels/book_detail_viewmodel.dart';
+import 'library_page.dart';
 import 'manual_add_book_page.dart';
 import 'quote_scan_page.dart';
 import 'reading_page.dart';
@@ -250,10 +251,11 @@ class _BookDetailViewState extends State<_BookDetailView> {
 
     if (success) {
       _didChange = true;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Book deleted.')),
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => LibraryPage(user: widget.user, token: widget.token),
+        ),
       );
-      Navigator.pop(context, true);
       return;
     }
 
@@ -520,6 +522,9 @@ class _BookMetaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final startDateLabel = _formatBookDate(detail.startDate);
+    final finishDateLabel = _formatBookDate(detail.finishDate);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -551,6 +556,25 @@ class _BookMetaSection extends StatelessWidget {
                 icon: Icons.auto_stories_outlined,
                 text: 'Published ${detail.publishedYear}',
               ),
+            ],
+          ),
+        ],
+        if (startDateLabel != null || finishDateLabel != null) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            runSpacing: 12,
+            spacing: 12,
+            children: [
+              if (startDateLabel != null)
+                _MetaChip(
+                  icon: Icons.play_circle_outline_rounded,
+                  text: 'Start $startDateLabel',
+                ),
+              if (finishDateLabel != null)
+                _MetaChip(
+                  icon: Icons.event_available_rounded,
+                  text: 'End $finishDateLabel',
+                ),
             ],
           ),
         ],
@@ -1130,4 +1154,21 @@ String _statusLabel(String status) {
     default:
       return 'Planned';
   }
+}
+
+String? _formatBookDate(String? value) {
+  final text = value?.trim();
+  if (text == null || text.isEmpty) {
+    return null;
+  }
+
+  final parsed = DateTime.tryParse(text);
+  if (parsed == null) {
+    return text;
+  }
+
+  final day = parsed.day.toString().padLeft(2, '0');
+  final month = parsed.month.toString().padLeft(2, '0');
+  final year = parsed.year.toString();
+  return '$day/$month/$year';
 }

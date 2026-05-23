@@ -414,8 +414,8 @@ class _ManualAddBookViewState extends State<_ManualAddBookView> {
                                   return null;
                                 }
 
-                                if (!finishDate.isAfter(startDate)) {
-                                  return 'Finish date must be after start date';
+                                if (finishDate.isBefore(startDate)) {
+                                  return 'Finish date must be on or after start date';
                                 }
 
                                 return null;

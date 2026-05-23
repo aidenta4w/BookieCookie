@@ -16,15 +16,25 @@ class HomeViewModel extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
   int? _loadedYear;
+  DateTime? _loadedAnchorDate;
 
-  Future<void> loadDashboard({int? year}) async {
+  Future<void> loadDashboard({int? year, DateTime? anchorDate}) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      final resolvedYear = year ?? _loadedYear;
-      final query = resolvedYear == null ? '' : '?year=$resolvedYear';
+      final resolvedYear = year ?? anchorDate?.year ?? _loadedYear;
+      final queryParameters = <String, String>{};
+      if (resolvedYear != null) {
+        queryParameters['year'] = '$resolvedYear';
+      }
+      if (anchorDate != null) {
+        queryParameters['anchorDate'] = _formatDateOnly(anchorDate);
+      }
+      final query = queryParameters.isEmpty
+          ? ''
+          : '?${Uri(queryParameters: queryParameters).query}';
       final result = await _apiService.get(
         '/home/${user.id}/dashboard$query',
         headers: token == null ? null : {'Authorization': 'Bearer $token'},
@@ -34,6 +44,7 @@ class HomeViewModel extends ChangeNotifier {
         final data = result['data'] as Map<String, dynamic>? ?? {};
         dashboard = HomeDashboardModel.fromJson(data);
         _loadedYear = dashboard?.year ?? resolvedYear;
+        _loadedAnchorDate = anchorDate ?? _loadedAnchorDate;
       } else {
         errorMessage =
             result['message'] as String? ?? 'Failed to load homepage';
@@ -62,7 +73,10 @@ class HomeViewModel extends ChangeNotifier {
 
       errorMessage = null;
       dashboard = _applyYearlyGoalUpdate(dashboard, targetValue);
-      await loadDashboard(year: year ?? _loadedYear ?? dashboard?.year);
+      await loadDashboard(
+        year: year ?? _loadedYear ?? dashboard?.year,
+        anchorDate: _loadedAnchorDate,
+      );
     } on ApiException {
       rethrow;
     } catch (error) {
@@ -116,5 +130,12 @@ class HomeViewModel extends ChangeNotifier {
               ),
             ),
     );
+  }
+
+  String _formatDateOnly(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    final month = normalized.month.toString().padLeft(2, '0');
+    final day = normalized.day.toString().padLeft(2, '0');
+    return '${normalized.year}-$month-$day';
   }
 }

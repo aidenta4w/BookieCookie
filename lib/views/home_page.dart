@@ -623,7 +623,7 @@ class _StreakCard extends StatelessWidget {
           Text(
             activityCount == 0
                 ? 'Start updating your reading to build a streak.'
-                : '$activityCount reading activity day(s) recorded from your database.',
+                : 'Your current streak.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.darkBrown.withValues(alpha: 0.75),
