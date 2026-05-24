@@ -44,7 +44,7 @@ A mobile book tracking application that allows users to manage personal librarie
 ## System Architecture
 
 The application follows a client-server architecture.
-<img src="https://drive.google.com/file/d/1qj4q935KyhNE489c3Y6zqM7vxHGnV6PR/view?usp=drive_link" width="250"/>
+<img src="./assets/architecture.png" width="700"/>
 
 ### Client
 - Flutter
