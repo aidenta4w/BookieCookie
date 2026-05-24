@@ -3,11 +3,9 @@
 A mobile book tracking application that allows users to manage personal libraries, track reading progress, rate books, and save reading notes and quotes.
 
 ## Demo
-
-Slide: https://drive.google.com/file/d/1Vdp9HDw_aFwo3jdQYq8P2iv6G_7G4cTv/view?usp=drive_link
-API Docs: https://bookiecookie.onrender.com/api-docs/
-Video demo: https://drive.google.com/file/d/1zzRQUTbBG3Ka7hSxr-NwwLfjmOroSSOi/view?usp=drive_link
-
+- Slide: https://drive.google.com/file/d/1Vdp9HDw_aFwo3jdQYq8P2iv6G_7G4cTv/view?usp=drive_link
+- API Docs: https://bookiecookie.onrender.com/api-docs/
+- Video demo: https://drive.google.com/file/d/1zzRQUTbBG3Ka7hSxr-NwwLfjmOroSSOi/view?usp=drive_link
 ## 🚀 Features
 
 ### Book Management
