@@ -44,8 +44,11 @@ A mobile book tracking application that allows users to manage personal librarie
 ## System Architecture
 
 The application follows a client-server architecture.
+<p align="center">
 <img src="./frontend/assets/images/architecture" width="700"/>
+</p>
 
+##Tech stack
 ### Client
 - Flutter
 - MVVM Architecture
@@ -63,7 +66,4 @@ The application follows a client-server architecture.
 - Cloudinary
 - Google Books API
 
----
-
-## 🧩 Architecture Overview
 
