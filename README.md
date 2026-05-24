@@ -6,7 +6,7 @@ A mobile book tracking application that allows users to manage personal librarie
 - Slide: https://drive.google.com/file/d/1Vdp9HDw_aFwo3jdQYq8P2iv6G_7G4cTv/view?usp=drive_link
 - API Docs: https://bookiecookie.onrender.com/api-docs/
 - Video demo: https://drive.google.com/file/d/1zzRQUTbBG3Ka7hSxr-NwwLfjmOroSSOi/view?usp=drive_link
-## 🚀 Features
+## Features
 
 ### Book Management
 - Add, update, search, and delete books
@@ -48,7 +48,7 @@ The application follows a client-server architecture.
 <img src="./frontend/assets/images/architecture" width="700"/>
 </p>
 
-##Tech stack
+## Tech stack
 ### Client
 - Flutter
 - MVVM Architecture
